@@ -7,7 +7,7 @@ schema_version: 1
 
 experiment:
   name: null  # 子配置必填，结果写入 runs/<name>/<run_id>，每次运行独立保存。
-  seed: 42  # 控制初始化、打乱与增强；不会重新划分已有 samples.csv。
+  seed: 42  # 控制初始化、打乱与增强；不会重新划分已有 train/val/test 目录。
   output_root: ../../runs
 
 task:
@@ -16,13 +16,14 @@ task:
 # 固定划分：train=2564、val=551、test=551。多模型共用，便于公平比较。
 # 若某次实验更换数据集，在其子配置中覆盖 dataset，无需修改公共基线。
 dataset:
-  provider: manifest
+  provider: imagefolder  # 直接扫描 train/val/test/<类别>/图片，不依赖 CSV 清单。
   name: flower_photos  # 五类花卉，不是 Flowers102。
   root: ../../data/flower_photos_split
-  manifest: ../../data/flower_photos_split/samples.csv
-  classes_file: ../../data/flower_photos_split/classes.json  # daisy/dandelion/roses/sunflowers/tulips。
+  manifest: null  # ImageFolder 不读取 samples.csv；处理脚本生成的清单仅用于追溯。
+  classes_file: null  # 从 train 子目录按名称排序：daisy/dandelion/roses/sunflowers/tulips。
+  splits: {train: train, val: val, test: test}  # 数据集根目录下的三个划分目录。
   num_classes: 5
-  integrity: strict  # 解码并计算 SHA256，检查跨集合重复和 group 泄漏。
+  integrity: strict  # 解码并计算文件 SHA256，检查跨集合重复；此模式没有 manifest group_id。
   limit_per_split: null  # 使用全部样本；整数仅用于短流程检查。
 
 model:
@@ -88,6 +89,11 @@ checkpoint:
   finetune_from: last  # 同一实验自动选择最新 last.ckpt；不存在时使用上面的初始权重。
   # 仅继承模型参数，新建运行目录，epoch/学习率/优化器按本次配置重新开始。
   # 使用 --fresh 或设为 null 可关闭；完整断点恢复仍使用 --resume。
+
+visualization:
+  enabled: true  # 训练后生成曲线、逐类指标、混淆矩阵和离线 HTML 报告。
+  top_k: 5  # 保存预测图片时显示的最高概率类别数。
+  max_images: 64  # 预测报告最多展示的图片数；JSONL 仍保存全部预测。
 
 runtime:
   offline: false  # 允许下载缺失权重；true 时缺缓存直接报错。

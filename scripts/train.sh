@@ -179,7 +179,7 @@ trap 'state=STOPPED; exit 130' INT TERM
 
 # 所有子模型均使用 --no-sync，避免并发安装/卸载同一虚拟环境。
 echo "[$(date '+%F %T')] 同步项目环境"
-uv sync --frozen --extra export &
+uv sync &
 setup_pid=$!
 while kill -0 "$setup_pid" 2>/dev/null; do
     if [[ -f $batch/STOP ]]; then state=STOPPED; exit 130; fi
@@ -215,14 +215,14 @@ run_model() {
 }
 
 # 所有模型同时启动：注释整行可跳过模型；单独修改该行的 epochs/batch/lr。
-run_model resnet18 uv run --no-sync python examples/train.py --config configs/flower/flower_resnet18.yaml --epochs "$EPOCHS"
-run_model resnet50 uv run --no-sync python examples/train.py --config configs/flower/flower_resnet50.yaml --epochs "$EPOCHS"
-run_model mobilenetv3_small uv run --no-sync python examples/train.py --config configs/flower/flower_mobilenetv3_small.yaml --epochs "$EPOCHS"
-run_model efficientnet_b0 uv run --no-sync python examples/train.py --config configs/flower/flower_efficientnet_b0.yaml --epochs "$EPOCHS"
-run_model convnext_tiny uv run --no-sync python examples/train.py --config configs/flower/flower_convnext_tiny.yaml --epochs "$EPOCHS"
-run_model vit_tiny uv run --no-sync python examples/train.py --config configs/flower/flower_vit_tiny.yaml --epochs "$EPOCHS"
-run_model deit_tiny uv run --no-sync python examples/train.py --config configs/flower/flower_deit_tiny.yaml --epochs "$EPOCHS"
-run_model swin_tiny uv run --no-sync python examples/train.py --config configs/flower/flower_swin_tiny.yaml --epochs "$EPOCHS"
+run_model resnet18 uv run --no-sync examples/train.py --config configs/flower/flower_resnet18.yaml --epochs "$EPOCHS"
+run_model resnet50 uv run --no-sync examples/train.py --config configs/flower/flower_resnet50.yaml --epochs "$EPOCHS"
+run_model mobilenetv3_small uv run --no-sync examples/train.py --config configs/flower/flower_mobilenetv3_small.yaml --epochs "$EPOCHS"
+run_model efficientnet_b0 uv run --no-sync examples/train.py --config configs/flower/flower_efficientnet_b0.yaml --epochs "$EPOCHS"
+run_model convnext_tiny uv run --no-sync examples/train.py --config configs/flower/flower_convnext_tiny.yaml --epochs "$EPOCHS"
+run_model vit_tiny uv run --no-sync examples/train.py --config configs/flower/flower_vit_tiny.yaml --epochs "$EPOCHS"
+run_model deit_tiny uv run --no-sync examples/train.py --config configs/flower/flower_deit_tiny.yaml --epochs "$EPOCHS"
+run_model swin_tiny uv run --no-sync examples/train.py --config configs/flower/flower_swin_tiny.yaml --epochs "$EPOCHS"
 
 while [[ -n $(jobs -pr) ]]; do
     if [[ -f $batch/STOP ]]; then

@@ -280,6 +280,9 @@ class Events(Callback):
                     "epoch": trainer.current_epoch,
                     "global_step": trainer.global_step,
                     "lr": trainer.optimizers[0].param_groups[0]["lr"],
+                    "train_loss": float(trainer.callback_metrics["train/loss"])
+                    if "train/loss" in trainer.callback_metrics
+                    else None,
                 },
             )
         if self.stop_after_epoch is not None and trainer.current_epoch + 1 >= self.stop_after_epoch:
@@ -459,6 +462,10 @@ def train(cfg, original_config=None, smoke=False, stop_after_epoch=None):
                     "best_checkpoint": best,
                 },
             )
+            if cfg.visualization.enabled:
+                from .visualization import training_report
+
+                log.info("可视化报告：%s", training_report(directory))
     except BaseException as exc:
         if primary_process():
             write_json(

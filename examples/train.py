@@ -1,6 +1,7 @@
-"""通过模型 YAML 训练：python examples/train.py --config configs/flower/flower_resnet18.yaml。"""
+"""通过模型 YAML 训练：uv run examples/train.py --config configs/flower/flower_resnet18.yaml。"""
 
 import argparse
+import sys
 from pathlib import Path
 
 from clsframework import Classifier
@@ -29,6 +30,9 @@ def list_models(configs):
 
 
 def main(argv=None):
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     configs = model_configs()
     parser = argparse.ArgumentParser(
         description="正式训练；未指定的参数沿用 YAML 配置",
@@ -69,6 +73,12 @@ def main(argv=None):
         help="full_finetune 微调全部参数；linear_probe 只训练分类头",
     )
     parser.add_argument("--imgsz", type=int, help="输入图像大小；不指定时按配置自动匹配权重")
+    parser.add_argument(
+        "--plots",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="保存训练曲线、混淆矩阵和 HTML 报告；默认沿用 YAML",
+    )
     parser.add_argument("--log-level", choices=["DEBUG", "INFO", "WARNING", "ERROR"], help="日志级别")
     parser.add_argument(
         "--offline",
@@ -97,7 +107,18 @@ def main(argv=None):
     # 只传入用户明确指定的值，避免覆盖 YAML 中的配置。
     options = {
         key: getattr(args, key)
-        for key in ("epochs", "batch", "lr0", "workers", "device", "seed", "name", "offline", "imgsz")
+        for key in (
+            "epochs",
+            "batch",
+            "lr0",
+            "workers",
+            "device",
+            "seed",
+            "name",
+            "offline",
+            "imgsz",
+            "plots",
+        )
         if getattr(args, key) is not None
     }
     overrides = list(args.overrides)
@@ -139,6 +160,7 @@ def main(argv=None):
     print(f"训练结果：{directory}")
     print(f"推理 bundle：{model.bundle}")
     print(f"日志文件：{model.last_log}")
+    print(f"可视化报告：{model.last_report}")
 
 
 if __name__ == "__main__":

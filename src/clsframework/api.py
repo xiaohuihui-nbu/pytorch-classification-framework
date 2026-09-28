@@ -22,6 +22,7 @@ ALIASES = {
     "name": "experiment.name",
     "project": "experiment.output_root",
     "offline": "runtime.offline",
+    "plots": "visualization.enabled",
 }
 
 
@@ -64,6 +65,8 @@ class Classifier:
         configure_threads()
         self.allow_plugins = allow_plugins
         self.last_log: Path | None = None
+        self.last_output: Path | None = None
+        self.last_report: Path | None = None
         self._log_settings = Logging.model_validate(log_config) if log_config is not None else None
         self.run_dir: Path | None = None
         self.bundle: Path | None = None
@@ -192,7 +195,19 @@ class Classifier:
         self.run_dir = directory
         self.bundle = directory / "bundle" if (directory / "bundle/bundle_manifest.json").is_file() else None
         self._trained_config = cfg.model_copy(deep=True)
+        self.last_output = directory
+        report_path = directory / "visuals/report.html"
+        self.last_report = report_path if cfg.visualization.enabled and report_path.is_file() else None
         return directory
+
+    def report(self, *, output=None):
+        """Render recorded training metrics without rerunning training or evaluation."""
+        from .visualization import training_report
+
+        if self.run_dir is None:
+            raise ValueError("Train first, or load a saved run directory")
+        self.last_report = training_report(self.run_dir, output)
+        return self.last_report
 
     def val(self, *, config=None, split="val", output=None, overrides=None, **kwargs):
         """Evaluate a saved model on a locked dataset split (val by default)."""
@@ -204,6 +219,8 @@ class Classifier:
         with self._operation("test" if split == "test" else "val", cfg):
             resolve_runtime(cfg)
             report = test_bundle(bundle, cfg, split, output, self.allow_plugins)
+            self.last_output = Path(report["output_dir"])
+            self.last_report = self.last_output / "report.html" if cfg.visualization.enabled else None
             metrics = {key: value for key, value in report.items() if isinstance(value, (int, float))}
             logging.getLogger(__name__).info("评估完成：split=%s, metrics=%s", split, metrics)
             return report
@@ -212,7 +229,18 @@ class Classifier:
         """Evaluate the held-out test split."""
         return self.val(config=config, split="test", output=output, overrides=overrides, **kwargs)
 
-    def predict(self, source: str | Path, *, output=None, batch=16) -> list[dict]:
+    def predict(
+        self,
+        source: str | Path,
+        *,
+        output=None,
+        batch=16,
+        save=False,
+        project=None,
+        name=None,
+        top_k=None,
+        max_images=None,
+    ) -> list[dict]:
         """Return predictions for a local image/directory; optionally save JSONL."""
         bundle = self._require_bundle()
         if isinstance(batch, bool) or not isinstance(batch, int) or batch < 1:
@@ -220,7 +248,42 @@ class Classifier:
         source = Path(source)
         import torch
 
+        from .config import Visualization
         from .inference import predict
+        from .visualization import PredictionResult, positive_int, prediction_report
+
+        settings = self._trained_config or self._config
+        settings = settings.visualization if settings else Visualization()
+        top_k = positive_int(settings.top_k if top_k is None else top_k, "top_k", 100)
+        max_images = positive_int(
+            settings.max_images if max_images is None else max_images, "max_images", 1000
+        )
+        if not isinstance(save, bool):
+            raise TypeError("save must be a boolean")
+        if (project is not None or name is not None) and (not save or output is not None):
+            raise ValueError("project/name require save=True without an explicit output")
+        if name is not None and (
+            not isinstance(name, str)
+            or not name
+            or name in {".", ".."}
+            or any(c in name for c in '/\\<>:"|?*')
+        ):
+            raise ValueError("name must be a simple directory name")
+        if save and output is None:
+            from datetime import datetime
+            from uuid import uuid4
+
+            directory = Path(project or "runs/predict") / (
+                name or f"{datetime.now():%Y%m%d-%H%M%S}-{uuid4().hex[:8]}"
+            )
+            if directory.exists():
+                raise FileExistsError(directory)
+            output = directory / "predictions.jsonl"
+        gallery = Path(output).parent / f"{Path(output).stem}_visuals" if save else None
+        if gallery is not None and gallery.exists():
+            raise FileExistsError(gallery)
+        self.last_output = None
+        self.last_report = None
 
         torch.set_num_threads(2)
         with self._operation("predict"), TemporaryDirectory(prefix="cls-predict-") as temporary:
@@ -228,7 +291,14 @@ class Classifier:
                 raise FileNotFoundError(source)
             target = Path(output) if output is not None else Path(temporary) / "predictions.jsonl"
             predict(bundle, source, target, self.allow_plugins, batch)
-            results = [json.loads(line) for line in target.read_text(encoding="utf-8").splitlines()]
+            results = [
+                PredictionResult(json.loads(line)) for line in target.read_text(encoding="utf-8").splitlines()
+            ]
+            self.last_output = target.resolve() if output is not None else None
+            if save:
+                self.last_report = prediction_report(
+                    results, gallery, top_k=top_k, max_images=max_images
+                ).resolve()
             logging.getLogger(__name__).info(
                 "推理完成：source=%s, samples=%s, output=%s", source, len(results), output
             )

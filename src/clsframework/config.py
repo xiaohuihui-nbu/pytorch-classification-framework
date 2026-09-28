@@ -144,6 +144,12 @@ class Runtime(Strict):
     plugins: list[str] = Field(default_factory=list)
 
 
+class Visualization(Strict):
+    enabled: bool = True
+    top_k: int = Field(default=5, ge=1, le=100)
+    max_images: int = Field(default=64, ge=1, le=1000)
+
+
 class Config(Strict):
     schema_version: Literal[1] = 1
     experiment: Experiment = Field(default_factory=Experiment)
@@ -161,6 +167,7 @@ class Config(Strict):
     checkpoint: Checkpoint = Field(default_factory=Checkpoint)
     logging: Logging = Field(default_factory=Logging)
     runtime: Runtime = Field(default_factory=Runtime)
+    visualization: Visualization = Field(default_factory=Visualization)
 
     @model_validator(mode="after")
     def compatible(self):

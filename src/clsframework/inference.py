@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from PIL import Image, ImageDraw, ImageOps
+from PIL import Image, ImageOps
 from safetensors.torch import load_file
 
 from .data import loader, make_transform, prepare_data
@@ -115,7 +115,7 @@ def predict(bundle, inputs, output, allow_plugins=False, batch_size=16):
     return {"samples": len(files), "output": str(output)}
 
 
-def save_report(directory, report, classes):
+def save_report(directory, report, classes, plots=True):
     directory = Path(directory)
     write_json(directory / "metrics.json", report)
     with (directory / "per_class.csv").open("w", encoding="utf-8-sig", newline="") as f:
@@ -123,25 +123,11 @@ def save_report(directory, report, classes):
         writer.writeheader()
         for label, row in report["per_class"].items():
             writer.writerow({"class": label, **row})
-    if "confusion_matrix" in report:
-        matrix = np.asarray(report["confusion_matrix"])
-        # Numeric class indices keep the image legible and font-independent.
-        # classes.json beside the chart supplies the full label mapping.
-        cell, margin = max(18, min(48, 800 // len(classes))), 40
-        size = margin + cell * len(classes)
-        image = Image.new("RGB", (size, size), "white")
-        draw = ImageDraw.Draw(image)
-        maximum = max(1, matrix.max())
-        for i in range(len(classes)):
-            draw.text((margin + i * cell, 8), str(i), fill="black")
-            draw.text((4, margin + i * cell), str(i), fill="black")
-            for j in range(len(classes)):
-                shade = int(230 - 170 * matrix[i, j] / maximum)
-                x, y = margin + j * cell, margin + i * cell
-                draw.rectangle((x, y, x + cell - 1, y + cell - 1), fill=(shade, shade, 250))
-                draw.text((x + 2, y + 2), str(matrix[i, j]), fill="black")
-        image.save(directory / "confusion_matrix.png")
-        write_json(directory / "classes.json", classes)
+    write_json(directory / "classes.json", classes)
+    if plots:
+        from .visualization import evaluation_report
+
+        evaluation_report(directory, report, classes)
 
 
 def test_bundle(bundle, cfg, split="test", output=None, allow_plugins=False):
@@ -179,8 +165,8 @@ def test_bundle(bundle, cfg, split="test", output=None, allow_plugins=False):
                     {"sample_id": sid, "target": target, **decoded(p, spec["task"], classes, threshold)},
                 )
     report = evaluate_arrays(spec["task"], targets, probabilities, classes, threshold)
-    report.update(split=split, dataset_fingerprint=data.fingerprint)
-    save_report(directory, report, classes)
+    report.update(split=split, dataset_fingerprint=data.fingerprint, output_dir=str(directory.resolve()))
+    save_report(directory, report, classes, cfg.visualization.enabled)
     return report
 
 

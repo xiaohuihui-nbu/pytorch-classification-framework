@@ -114,17 +114,15 @@ def train(
     stop_after_epoch: Annotated[int | None, typer.Option(min=1)] = None,
 ):
     """Train; --resume accepts only trusted checkpoints created by this framework."""
-    show(
-        {
-            "run_dir": Classifier(config).train(
-                overrides=overrides,
-                resume=resume,
-                finetune_from=finetune_from,
-                fresh=fresh,
-                stop_after_epoch=stop_after_epoch,
-            )
-        }
+    model = Classifier(config)
+    directory = model.train(
+        overrides=overrides,
+        resume=resume,
+        finetune_from=finetune_from,
+        fresh=fresh,
+        stop_after_epoch=stop_after_epoch,
     )
+    show({"run_dir": directory, "report": model.last_report, "log": model.last_log})
 
 
 @app.command()
@@ -167,13 +165,46 @@ def val(
 def predict(
     bundle: Annotated[Path, typer.Option(exists=True)],
     inputs: Annotated[Path, typer.Option("--input", exists=True)],
-    output: Annotated[Path, typer.Option()],
+    output: Annotated[Path | None, typer.Option()] = None,
     batch_size: int = 16,
     allow_plugins: bool = False,
+    save: bool = True,
+    project: Path | None = None,
+    name: str | None = None,
+    topk: Annotated[int | None, typer.Option(min=1, max=100)] = None,
+    max_images: Annotated[int | None, typer.Option(min=1, max=1000)] = None,
 ):
     """Predict images on CPU using bundle preprocessing and labels."""
-    results = Classifier(bundle, allow_plugins=allow_plugins).predict(inputs, output=output, batch=batch_size)
-    show({"samples": len(results), "output": str(output)})
+    model = Classifier(bundle, allow_plugins=allow_plugins)
+    results = model.predict(
+        inputs,
+        output=output,
+        batch=batch_size,
+        save=save,
+        project=project,
+        name=name,
+        top_k=topk,
+        max_images=max_images,
+    )
+    show(
+        {
+            "samples": len(results),
+            "output": model.last_output,
+            "report": model.last_report,
+            **({"results": results} if model.last_output is None else {}),
+        }
+    )
+
+
+@app.command()
+def report(
+    run_dir: Annotated[Path, typer.Option(exists=True, file_okay=False)],
+    output: Path | None = None,
+):
+    """Generate offline plots/HTML from recorded epochs without loading weights."""
+    from .visualization import training_report
+
+    show({"report": training_report(run_dir, output)})
 
 
 @app.command("export")
@@ -189,16 +220,20 @@ def export_model(
 
 def normalize_arguments(arguments: list[str]) -> list[str]:
     """Translate mode key=value syntax while preserving the existing Typer options."""
+    if arguments and arguments[0] == "classify":
+        arguments = arguments[1:]
     if not arguments or not any("=" in arg and not arg.startswith("--") for arg in arguments[1:]):
         return arguments
     mode = arguments[0]
-    if mode not in {"train", "smoke", "prepare", "doctor", "val", "test", "predict", "export"}:
+    if mode not in {"train", "smoke", "prepare", "doctor", "val", "test", "predict", "export", "report"}:
         return arguments
     config_modes = {"train", "smoke", "prepare", "doctor", "val", "test"}
     option_names = {"output": "--output", "allow_plugins": "--allow-plugins"}
     if mode in config_modes:
         option_names.update(config="--config", cfg="--config")
     option_names["model"] = "--config" if mode in {"train", "smoke", "prepare", "doctor"} else "--bundle"
+    if mode == "report":
+        option_names["model"] = "--run-dir"
     if mode == "train":
         option_names.update(
             resume="--resume",
@@ -209,7 +244,15 @@ def normalize_arguments(arguments: list[str]) -> list[str]:
     if mode in {"val", "test"}:
         option_names["split"] = "--split"
     if mode == "predict":
-        option_names.update(source="--input", batch="--batch-size")
+        option_names.update(
+            source="--input",
+            batch="--batch-size",
+            save="--save",
+            project="--project",
+            name="--name",
+            topk="--topk",
+            max_images="--max-images",
+        )
     if mode == "export":
         option_names["format"] = "--format"
     result, seen = [mode], set()
@@ -226,6 +269,7 @@ def normalize_arguments(arguments: list[str]) -> list[str]:
                 "-c": "--config",
                 "--no-allow-plugins": "--allow-plugins",
                 "--no-fresh": "--fresh",
+                "--no-save": "--save",
             }.get(flag, flag)
             if canonical_flag != "--set":
                 if canonical_flag in seen:
@@ -237,6 +281,8 @@ def normalize_arguments(arguments: list[str]) -> list[str]:
                 "--no-allow-plugins",
                 "--fresh",
                 "--no-fresh",
+                "--save",
+                "--no-save",
                 "--help",
             }
             continue
@@ -248,7 +294,7 @@ def normalize_arguments(arguments: list[str]) -> list[str]:
             raise ValueError(f"Duplicate argument: {key}")
         seen.add(canonical)
         if key in option_names:
-            if key in {"allow_plugins", "fresh"}:
+            if key in {"allow_plugins", "fresh", "save"}:
                 if value.lower() not in {"true", "false"}:
                     raise ValueError(f"{key} must be true or false")
                 result.append(canonical if value.lower() == "true" else canonical.replace("--", "--no-", 1))
