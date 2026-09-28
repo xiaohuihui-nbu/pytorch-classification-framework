@@ -1,0 +1,10 @@
+# timm 发布的 ViT-Tiny AugReg 权重（ImageNet-21k 预训练后适配 ImageNet-1k）。
+# torchvision 没有该 Tiny 架构，使用 timm 官方模型仓库。
+defaults: [flower_base, _self_]
+experiment:
+  name: flower_vit_tiny
+model:
+  provider: timm
+  name: vit_tiny_patch16_224.augreg_in21k_ft_in1k
+logging:
+  directory: ../../logs/flower_vit_tiny

@@ -1,0 +1,38 @@
+{
+  "preprocess": {
+    "source": "explicit",
+    "image_size": 32,
+    "color_mode": "RGB",
+    "mean": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "std": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "interpolation": "bilinear",
+    "crop_pct": 1.0
+  },
+  "classes": [
+    "blue",
+    "red"
+  ],
+  "task": "multiclass",
+  "threshold": 0.5,
+  "sha256": "d36a53d1ac972ff0ad8cde5e4b13760dde007cca1f19b199c71fd7992334deff",
+  "validation": [
+    {
+      "batch": 1,
+      "max_abs_error": 3.7997961044311523e-07
+    },
+    {
+      "batch": 3,
+      "max_abs_error": 7.078051567077637e-07
+    }
+  ],
+  "rtol": 0.001,
+  "atol": 0.0001
+}

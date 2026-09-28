@@ -1,0 +1,137 @@
+[
+  {
+    "provider": "timm",
+    "name": "resnet18",
+    "status": "cpu_forward_backward_passed",
+    "parameters": 11178051,
+    "seconds": 0.207,
+    "loss": 1.1163005828857422,
+    "pretrained": false,
+    "input_shape": [
+      2,
+      3,
+      224,
+      224
+    ]
+  },
+  {
+    "provider": "timm",
+    "name": "resnet50",
+    "status": "cpu_forward_backward_passed",
+    "parameters": 23514179,
+    "seconds": 0.47,
+    "loss": 1.1036341190338135,
+    "pretrained": false,
+    "input_shape": [
+      2,
+      3,
+      224,
+      224
+    ]
+  },
+  {
+    "provider": "timm",
+    "name": "mobilenetv3_small_100",
+    "status": "cpu_forward_backward_passed",
+    "parameters": 1520931,
+    "seconds": 0.085,
+    "loss": 0.7645373344421387,
+    "pretrained": false,
+    "input_shape": [
+      2,
+      3,
+      224,
+      224
+    ]
+  },
+  {
+    "provider": "timm",
+    "name": "efficientnet_b0",
+    "status": "cpu_forward_backward_passed",
+    "parameters": 4011391,
+    "seconds": 0.196,
+    "loss": 4.259556770324707,
+    "pretrained": false,
+    "input_shape": [
+      2,
+      3,
+      224,
+      224
+    ]
+  },
+  {
+    "provider": "timm",
+    "name": "convnext_tiny",
+    "status": "cpu_forward_backward_passed",
+    "parameters": 27822435,
+    "seconds": 0.498,
+    "loss": 1.1198561191558838,
+    "pretrained": false,
+    "input_shape": [
+      2,
+      3,
+      224,
+      224
+    ]
+  },
+  {
+    "provider": "timm",
+    "name": "vit_tiny_patch16_224",
+    "status": "cpu_forward_backward_passed",
+    "parameters": 5524995,
+    "seconds": 0.134,
+    "loss": 1.0104540586471558,
+    "pretrained": false,
+    "input_shape": [
+      2,
+      3,
+      224,
+      224
+    ]
+  },
+  {
+    "provider": "timm",
+    "name": "deit_tiny_patch16_224",
+    "status": "cpu_forward_backward_passed",
+    "parameters": 5524995,
+    "seconds": 0.12,
+    "loss": 1.055855631828308,
+    "pretrained": false,
+    "input_shape": [
+      2,
+      3,
+      224,
+      224
+    ]
+  },
+  {
+    "provider": "timm",
+    "name": "swin_tiny_patch4_window7_224",
+    "status": "cpu_forward_backward_passed",
+    "parameters": 27521661,
+    "seconds": 0.569,
+    "loss": 1.0223300457000732,
+    "pretrained": false,
+    "input_shape": [
+      2,
+      3,
+      224,
+      224
+    ]
+  },
+  {
+    "provider": "torchvision",
+    "name": "resnet18",
+    "status": "cpu_forward_backward_passed",
+    "parameters": 11178051,
+    "seconds": 0.216,
+    "loss": 1.1758177280426025,
+    "pretrained": false,
+    "input_shape": [
+      2,
+      3,
+      224,
+      224
+    ]
+  }
+]

@@ -1,0 +1,853 @@
+{
+  "$defs": {
+    "Augmentation": {
+      "additionalProperties": false,
+      "properties": {
+        "preset": {
+          "default": "baseline",
+          "enum": [
+            "none",
+            "baseline",
+            "finetune",
+            "strong"
+          ],
+          "title": "Preset",
+          "type": "string"
+        },
+        "horizontal_flip": {
+          "default": 0.5,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Horizontal Flip",
+          "type": "number"
+        },
+        "mixup_alpha": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Mixup Alpha",
+          "type": "number"
+        },
+        "cutmix_alpha": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Cutmix Alpha",
+          "type": "number"
+        }
+      },
+      "title": "Augmentation",
+      "type": "object"
+    },
+    "Checkpoint": {
+      "additionalProperties": false,
+      "properties": {
+        "resume_from": {
+          "anyOf": [
+            {
+              "format": "path",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resume From"
+        },
+        "resume_policy": {
+          "const": "strict",
+          "default": "strict",
+          "title": "Resume Policy",
+          "type": "string"
+        },
+        "finetune_from": {
+          "anyOf": [
+            {
+              "format": "path",
+              "type": "string"
+            },
+            {
+              "const": "last",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finetune From"
+        }
+      },
+      "title": "Checkpoint",
+      "type": "object"
+    },
+    "Data": {
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "default": "imagefolder",
+          "title": "Provider",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "root": {
+          "format": "path",
+          "title": "Root",
+          "type": "string"
+        },
+        "manifest": {
+          "anyOf": [
+            {
+              "format": "path",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Manifest"
+        },
+        "classes_file": {
+          "anyOf": [
+            {
+              "format": "path",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Classes File"
+        },
+        "splits": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Splits",
+          "type": "object"
+        },
+        "download": {
+          "default": false,
+          "title": "Download",
+          "type": "boolean"
+        },
+        "num_classes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "const": "auto",
+              "type": "string"
+            }
+          ],
+          "default": "auto",
+          "title": "Num Classes"
+        },
+        "split_policy": {
+          "$ref": "#/$defs/SplitPolicy"
+        },
+        "integrity": {
+          "default": "strict",
+          "enum": [
+            "strict",
+            "paths"
+          ],
+          "title": "Integrity",
+          "type": "string"
+        },
+        "limit_per_split": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Limit Per Split"
+        }
+      },
+      "title": "Data",
+      "type": "object"
+    },
+    "Evaluation": {
+      "additionalProperties": false,
+      "properties": {
+        "monitor": {
+          "default": "val/macro_f1",
+          "title": "Monitor",
+          "type": "string"
+        },
+        "mode": {
+          "default": "max",
+          "enum": [
+            "max",
+            "min"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "threshold": {
+          "default": 0.5,
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Threshold",
+          "type": "number"
+        },
+        "test_after_fit": {
+          "const": false,
+          "default": false,
+          "title": "Test After Fit",
+          "type": "boolean"
+        }
+      },
+      "title": "Evaluation",
+      "type": "object"
+    },
+    "Experiment": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "default": "classification",
+          "title": "Name",
+          "type": "string"
+        },
+        "seed": {
+          "default": 42,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "output_root": {
+          "format": "path",
+          "title": "Output Root",
+          "type": "string"
+        }
+      },
+      "title": "Experiment",
+      "type": "object"
+    },
+    "Loader": {
+      "additionalProperties": false,
+      "properties": {
+        "batch_size_per_device": {
+          "default": 16,
+          "exclusiveMinimum": 0,
+          "title": "Batch Size Per Device",
+          "type": "integer"
+        },
+        "num_workers": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Num Workers",
+          "type": "integer"
+        },
+        "pin_memory": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "const": "auto",
+              "type": "string"
+            }
+          ],
+          "default": "auto",
+          "title": "Pin Memory"
+        },
+        "persistent_workers": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "const": "auto",
+              "type": "string"
+            }
+          ],
+          "default": "auto",
+          "title": "Persistent Workers"
+        }
+      },
+      "title": "Loader",
+      "type": "object"
+    },
+    "Logging": {
+      "additionalProperties": false,
+      "properties": {
+        "tensorboard": {
+          "default": false,
+          "title": "Tensorboard",
+          "type": "boolean"
+        },
+        "level": {
+          "default": "INFO",
+          "enum": [
+            "DEBUG",
+            "INFO",
+            "WARNING",
+            "ERROR"
+          ],
+          "title": "Level",
+          "type": "string"
+        },
+        "console": {
+          "default": true,
+          "title": "Console",
+          "type": "boolean"
+        },
+        "file": {
+          "default": true,
+          "title": "File",
+          "type": "boolean"
+        },
+        "directory": {
+          "anyOf": [
+            {
+              "format": "path",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Directory"
+        }
+      },
+      "title": "Logging",
+      "type": "object"
+    },
+    "Loss": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "default": "cross_entropy",
+          "title": "Name",
+          "type": "string"
+        },
+        "label_smoothing": {
+          "default": 0.0,
+          "exclusiveMaximum": 1,
+          "minimum": 0,
+          "title": "Label Smoothing",
+          "type": "number"
+        },
+        "class_weight": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "const": "balanced",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Class Weight"
+        },
+        "pos_weight": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pos Weight"
+        },
+        "gamma": {
+          "default": 2.0,
+          "minimum": 0,
+          "title": "Gamma",
+          "type": "number"
+        },
+        "alpha": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alpha"
+        }
+      },
+      "title": "Loss",
+      "type": "object"
+    },
+    "Model": {
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "default": "timm",
+          "title": "Provider",
+          "type": "string"
+        },
+        "name": {
+          "default": "resnet18",
+          "title": "Name",
+          "type": "string"
+        },
+        "weights": {
+          "$ref": "#/$defs/Weights"
+        },
+        "num_classes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "const": "auto",
+              "type": "string"
+            }
+          ],
+          "default": "auto",
+          "title": "Num Classes"
+        },
+        "input_channels": {
+          "default": 3,
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Input Channels",
+          "type": "integer"
+        },
+        "training_mode": {
+          "default": "full_finetune",
+          "enum": [
+            "full_finetune",
+            "linear_probe"
+          ],
+          "title": "Training Mode",
+          "type": "string"
+        }
+      },
+      "title": "Model",
+      "type": "object"
+    },
+    "Optimizer": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "default": "adamw",
+          "enum": [
+            "adamw",
+            "adam",
+            "sgd"
+          ],
+          "title": "Name",
+          "type": "string"
+        },
+        "lr": {
+          "default": 0.001,
+          "exclusiveMinimum": 0,
+          "title": "Lr",
+          "type": "number"
+        },
+        "weight_decay": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Weight Decay",
+          "type": "number"
+        },
+        "momentum": {
+          "default": 0.9,
+          "exclusiveMaximum": 1,
+          "minimum": 0,
+          "title": "Momentum",
+          "type": "number"
+        },
+        "exclude_norm_and_bias_from_decay": {
+          "default": true,
+          "title": "Exclude Norm And Bias From Decay",
+          "type": "boolean"
+        }
+      },
+      "title": "Optimizer",
+      "type": "object"
+    },
+    "Preprocessing": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "default": "model_weights",
+          "enum": [
+            "explicit",
+            "model_weights"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "image_size": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "const": "auto",
+              "type": "string"
+            }
+          ],
+          "default": "auto",
+          "title": "Image Size"
+        },
+        "color_mode": {
+          "default": "RGB",
+          "enum": [
+            "RGB",
+            "L"
+          ],
+          "title": "Color Mode",
+          "type": "string"
+        },
+        "mean": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Mean",
+          "type": "array"
+        },
+        "std": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Std",
+          "type": "array"
+        },
+        "interpolation": {
+          "default": "bilinear",
+          "enum": [
+            "bilinear",
+            "bicubic",
+            "nearest"
+          ],
+          "title": "Interpolation",
+          "type": "string"
+        },
+        "crop_pct": {
+          "default": 0.875,
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "Crop Pct",
+          "type": "number"
+        },
+        "resize_size": {
+          "anyOf": [
+            {
+              "minimum": 8,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resize Size"
+        }
+      },
+      "title": "Preprocessing",
+      "type": "object"
+    },
+    "Runtime": {
+      "additionalProperties": false,
+      "properties": {
+        "offline": {
+          "default": false,
+          "title": "Offline",
+          "type": "boolean"
+        },
+        "cache_dir": {
+          "format": "path",
+          "title": "Cache Dir",
+          "type": "string"
+        },
+        "weights_dir": {
+          "anyOf": [
+            {
+              "format": "path",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Weights Dir"
+        },
+        "plugins": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Plugins",
+          "type": "array"
+        }
+      },
+      "title": "Runtime",
+      "type": "object"
+    },
+    "Scheduler": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "default": "none",
+          "enum": [
+            "none",
+            "warmup_cosine"
+          ],
+          "title": "Name",
+          "type": "string"
+        },
+        "interval": {
+          "const": "step",
+          "default": "step",
+          "title": "Interval",
+          "type": "string"
+        },
+        "warmup_epochs": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Warmup Epochs",
+          "type": "integer"
+        },
+        "min_lr": {
+          "default": 0.0,
+          "minimum": 0,
+          "title": "Min Lr",
+          "type": "number"
+        }
+      },
+      "title": "Scheduler",
+      "type": "object"
+    },
+    "SplitPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "val_fraction": {
+          "default": 0.1,
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Val Fraction",
+          "type": "number"
+        },
+        "seed": {
+          "default": 42,
+          "title": "Seed",
+          "type": "integer"
+        }
+      },
+      "title": "SplitPolicy",
+      "type": "object"
+    },
+    "Task": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "default": "multiclass",
+          "enum": [
+            "multiclass",
+            "binary",
+            "multilabel"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "title": "Task",
+      "type": "object"
+    },
+    "Trainer": {
+      "additionalProperties": false,
+      "properties": {
+        "engine": {
+          "const": "lightning",
+          "default": "lightning",
+          "title": "Engine",
+          "type": "string"
+        },
+        "accelerator": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "cpu",
+            "gpu"
+          ],
+          "title": "Accelerator",
+          "type": "string"
+        },
+        "devices": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Devices",
+          "type": "integer"
+        },
+        "precision": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "32-true",
+            "16-mixed",
+            "bf16-mixed"
+          ],
+          "title": "Precision",
+          "type": "string"
+        },
+        "max_epochs": {
+          "default": 3,
+          "exclusiveMinimum": 0,
+          "title": "Max Epochs",
+          "type": "integer"
+        },
+        "accumulate_grad_batches": {
+          "default": 1,
+          "exclusiveMinimum": 0,
+          "title": "Accumulate Grad Batches",
+          "type": "integer"
+        },
+        "gradient_clip_val": {
+          "default": 1.0,
+          "minimum": 0,
+          "title": "Gradient Clip Val",
+          "type": "number"
+        },
+        "deterministic": {
+          "default": false,
+          "title": "Deterministic",
+          "type": "boolean"
+        },
+        "cpu_threads": {
+          "default": 2,
+          "exclusiveMinimum": 0,
+          "title": "Cpu Threads",
+          "type": "integer"
+        },
+        "enable_progress_bar": {
+          "default": true,
+          "title": "Enable Progress Bar",
+          "type": "boolean"
+        }
+      },
+      "title": "Trainer",
+      "type": "object"
+    },
+    "Weights": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "default": "provider_default",
+          "enum": [
+            "none",
+            "provider_default",
+            "local"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "format": "path",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        },
+        "required": {
+          "const": true,
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        }
+      },
+      "title": "Weights",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "experiment": {
+      "$ref": "#/$defs/Experiment"
+    },
+    "task": {
+      "$ref": "#/$defs/Task"
+    },
+    "dataset": {
+      "$ref": "#/$defs/Data"
+    },
+    "model": {
+      "$ref": "#/$defs/Model"
+    },
+    "preprocessing": {
+      "$ref": "#/$defs/Preprocessing"
+    },
+    "augmentation": {
+      "$ref": "#/$defs/Augmentation"
+    },
+    "loader": {
+      "$ref": "#/$defs/Loader"
+    },
+    "loss": {
+      "$ref": "#/$defs/Loss"
+    },
+    "optimizer": {
+      "$ref": "#/$defs/Optimizer"
+    },
+    "scheduler": {
+      "$ref": "#/$defs/Scheduler"
+    },
+    "trainer": {
+      "$ref": "#/$defs/Trainer"
+    },
+    "evaluation": {
+      "$ref": "#/$defs/Evaluation"
+    },
+    "checkpoint": {
+      "$ref": "#/$defs/Checkpoint"
+    },
+    "logging": {
+      "$ref": "#/$defs/Logging"
+    },
+    "runtime": {
+      "$ref": "#/$defs/Runtime"
+    }
+  },
+  "title": "Config",
+  "type": "object"
+}

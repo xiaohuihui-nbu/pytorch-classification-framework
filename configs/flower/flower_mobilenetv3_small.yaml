@@ -1,0 +1,9 @@
+# 官方 torchvision MobileNetV3-Small。
+defaults: [flower_base, _self_]
+experiment:
+  name: flower_mobilenetv3_small
+model:
+  provider: torchvision
+  name: mobilenet_v3_small
+logging:
+  directory: ../../logs/flower_mobilenetv3_small

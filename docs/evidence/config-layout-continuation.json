@@ -1,0 +1,29 @@
+{
+  "date": "2026-09-28",
+  "pytest_passed": 48,
+  "ruff": "passed",
+  "build": "wheel + sdist passed",
+  "runnable_flower_configs": [
+    "flower_convnext_tiny.yaml",
+    "flower_deit_tiny.yaml",
+    "flower_efficientnet_b0.yaml",
+    "flower_mobilenetv3_small.yaml",
+    "flower_photos.yaml",
+    "flower_resnet18.yaml",
+    "flower_resnet50.yaml",
+    "flower_swin_tiny.yaml",
+    "flower_vit_tiny.yaml"
+  ],
+  "base_template_rejected_as_entry": true,
+  "root_paths_verified": true,
+  "examples": [
+    "train.py",
+    "predict.py"
+  ],
+  "continuation_tests": 5,
+  "strict_resume_comparison": {
+    "rtol": 0,
+    "atol": 0
+  },
+  "scope": "Windows CPU regression; no new long flower training"
+}

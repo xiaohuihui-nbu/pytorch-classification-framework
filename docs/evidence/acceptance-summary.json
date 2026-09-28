@@ -1,0 +1,101 @@
+{
+  "environment": {
+    "python": "3.12.14 (main, Aug 14 2026, 15:40:22) [MSC v.1944 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "packages": {
+      "torch": "2.14.0+cpu",
+      "torchvision": "0.29.0+cpu",
+      "timm": "1.0.30",
+      "lightning": "2.6.6",
+      "torchmetrics": "1.9.0",
+      "hydra-core": "1.3.7",
+      "pydantic": "2.13.5"
+    },
+    "cuda_available": false,
+    "cuda_version": null,
+    "gpu_count": 0
+  },
+  "runs": {
+    "demo_colors": {
+      "path": "E:\\xhh\\projects\\pytorch-classification-framework\\runs\\demo_colors\\20260928-113545-3c398c54",
+      "status": {
+        "state": "SUCCEEDED",
+        "time": "2026-09-28T03:35:45.690210+00:00",
+        "epochs_completed": 5,
+        "global_step": 20,
+        "smoke": false,
+        "best_checkpoint": "E:\\xhh\\projects\\pytorch-classification-framework\\runs\\demo_colors\\20260928-113545-3c398c54\\checkpoints\\epoch-000.ckpt"
+      },
+      "test_metrics": {
+        "samples": 16,
+        "accuracy_top1": 1.0,
+        "macro_f1": 1.0
+      },
+      "onnx": [
+        {
+          "batch": 1,
+          "max_abs_error": 3.7997961044311523e-07
+        },
+        {
+          "batch": 3,
+          "max_abs_error": 7.078051567077637e-07
+        }
+      ]
+    },
+    "mnist_resnet18": {
+      "path": "E:\\xhh\\projects\\pytorch-classification-framework\\runs\\mnist_resnet18\\20260928-113601-296239b0",
+      "status": {
+        "state": "SUCCEEDED",
+        "time": "2026-09-28T03:36:05.972085+00:00",
+        "epochs_completed": 2,
+        "global_step": 20,
+        "smoke": false,
+        "best_checkpoint": "E:\\xhh\\projects\\pytorch-classification-framework\\runs\\mnist_resnet18\\20260928-113601-296239b0\\checkpoints\\epoch-001.ckpt"
+      },
+      "test_metrics": {
+        "samples": 100,
+        "accuracy_top1": 0.44,
+        "accuracy_top5": 0.91,
+        "macro_f1": 0.38442649557704633
+      },
+      "onnx": [
+        {
+          "batch": 1,
+          "max_abs_error": 6.854534149169922e-07
+        },
+        {
+          "batch": 3,
+          "max_abs_error": 5.364418029785156e-07
+        }
+      ]
+    },
+    "demo_multilabel": {
+      "path": "E:\\xhh\\projects\\pytorch-classification-framework\\runs\\demo_multilabel\\20260928-113610-f4d73013",
+      "status": {
+        "state": "SUCCEEDED",
+        "time": "2026-09-28T03:36:10.919242+00:00",
+        "epochs_completed": 5,
+        "global_step": 20,
+        "smoke": false,
+        "best_checkpoint": "E:\\xhh\\projects\\pytorch-classification-framework\\runs\\demo_multilabel\\20260928-113610-f4d73013\\checkpoints\\epoch-000.ckpt"
+      },
+      "test_metrics": {
+        "samples": 16,
+        "macro_f1": 0.9629629629629629,
+        "micro_f1": 0.96,
+        "map": 1.0
+      }
+    },
+    "mnist_pretrained_offline-smoke": {
+      "path": "E:\\xhh\\projects\\pytorch-classification-framework\\runs\\mnist_pretrained_offline-smoke\\20260928-113555-4c9ea11c",
+      "status": {
+        "state": "SUCCEEDED",
+        "time": "2026-09-28T03:35:56.345299+00:00",
+        "epochs_completed": 1,
+        "global_step": 2,
+        "smoke": true,
+        "best_checkpoint": "E:\\xhh\\projects\\pytorch-classification-framework\\runs\\mnist_pretrained_offline-smoke\\20260928-113555-4c9ea11c\\checkpoints\\epoch-000.ckpt"
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+# 官方 torchvision Swin-Tiny，适配 model.head 为 5 类。
+defaults: [flower_base, _self_]
+experiment:
+  name: flower_swin_tiny
+model:
+  provider: torchvision
+  name: swin_t
+logging:
+  directory: ../../logs/flower_swin_tiny

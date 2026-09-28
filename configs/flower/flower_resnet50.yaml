@@ -1,0 +1,9 @@
+# 官方 torchvision ResNet50，自动采用 DEFAULT 权重及其预处理。
+defaults: [flower_base, _self_]
+experiment:
+  name: flower_resnet50
+model:
+  provider: torchvision
+  name: resnet50
+logging:
+  directory: ../../logs/flower_resnet50

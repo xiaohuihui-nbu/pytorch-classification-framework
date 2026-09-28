@@ -1,0 +1,9 @@
+# 官方 torchvision ResNet18，继承花卉固定划分及 weights/ 目录。
+defaults: [flower_base, _self_]
+experiment:
+  name: flower_resnet18
+model:
+  provider: torchvision
+  name: resnet18
+logging:
+  directory: ../../logs/flower_resnet18

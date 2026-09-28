@@ -1,0 +1,10 @@
+# 官方 torchvision EfficientNet-B0。
+defaults: [flower_base, _self_]
+experiment:
+  name: flower_efficientnet_b0
+model:
+  provider: torchvision
+  name: efficientnet_b0
+logging:
+  directory: ../../logs/flower_efficientnet_b0
+

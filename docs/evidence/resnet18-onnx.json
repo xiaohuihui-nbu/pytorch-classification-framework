@@ -1,0 +1,46 @@
+{
+  "preprocess": {
+    "source": "explicit",
+    "image_size": 64,
+    "color_mode": "RGB",
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "interpolation": "bilinear",
+    "crop_pct": 0.875
+  },
+  "classes": [
+    "0 - zero",
+    "1 - one",
+    "2 - two",
+    "3 - three",
+    "4 - four",
+    "5 - five",
+    "6 - six",
+    "7 - seven",
+    "8 - eight",
+    "9 - nine"
+  ],
+  "task": "multiclass",
+  "threshold": 0.5,
+  "sha256": "f498e6505ded6d755868fb4a0f2c5f5563342780b8a133c7b52769bf565a07e8",
+  "validation": [
+    {
+      "batch": 1,
+      "max_abs_error": 6.854534149169922e-07
+    },
+    {
+      "batch": 3,
+      "max_abs_error": 5.364418029785156e-07
+    }
+  ],
+  "rtol": 0.001,
+  "atol": 0.0001
+}

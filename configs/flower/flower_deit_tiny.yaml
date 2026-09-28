@@ -1,0 +1,10 @@
+# Facebook/Meta DeiT-Tiny 权重，通过 timm 官方仓库加载。
+defaults: [flower_base, _self_]
+experiment:
+  name: flower_deit_tiny
+model:
+  provider: timm
+  name: deit_tiny_patch16_224.fb_in1k
+logging:
+  directory: ../../logs/flower_deit_tiny
+

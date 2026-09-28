@@ -1,0 +1,281 @@
+{
+  "weights_root": "E:\\xhh\\projects\\pytorch-classification-framework\\weights",
+  "models": [
+    {
+      "id": "resnet18",
+      "provider": "torchvision",
+      "model": "resnet18",
+      "weight_id": "ResNet18_Weights.IMAGENET1K_V1",
+      "original_weights": [
+        {
+          "path": "torch/checkpoints/resnet18-f37072fd.pth",
+          "bytes": 46830571,
+          "sha256": "f37072fd47e89c5e827621c5baffa7500819f7896bbacec160b1a16c560e07ec"
+        }
+      ],
+      "adapted_weights": {
+        "path": "init-1e01313622ca549b6fff8093d28f4011387531bd15ab0b73e221b2d993f8c0cd.safetensors",
+        "bytes": 44765620,
+        "sha256": "2cc59882f9b0ed21278c681aaca12bdb5f6a9d84f42921f70993536725171d6b"
+      },
+      "preprocessing": {
+        "image_size": 224,
+        "resize_size": 256,
+        "crop_pct": 0.875,
+        "mean": [
+          0.485,
+          0.456,
+          0.406
+        ],
+        "std": [
+          0.229,
+          0.224,
+          0.225
+        ],
+        "interpolation": "bilinear"
+      }
+    },
+    {
+      "id": "resnet50",
+      "provider": "torchvision",
+      "model": "resnet50",
+      "weight_id": "ResNet50_Weights.IMAGENET1K_V2",
+      "original_weights": [
+        {
+          "path": "torch/checkpoints/resnet50-11ad3fa6.pth",
+          "bytes": 102540417,
+          "sha256": "11ad3fa62ca79e40addfd354a8ec4b7c75143b3038b8d2a807fbc68deab379ca"
+        }
+      ],
+      "adapted_weights": {
+        "path": "init-092dae43d13b841cecf272777538a5aeba1e886fe2eabdf9bafa3931b0b1aab3.safetensors",
+        "bytes": 94314532,
+        "sha256": "37bea0d493fd5499566c96300c026b810bae9b291bef1ed12ae2420f1d9ec6bb"
+      },
+      "preprocessing": {
+        "image_size": 224,
+        "resize_size": 232,
+        "crop_pct": 0.9655172413793104,
+        "mean": [
+          0.485,
+          0.456,
+          0.406
+        ],
+        "std": [
+          0.229,
+          0.224,
+          0.225
+        ],
+        "interpolation": "bilinear"
+      }
+    },
+    {
+      "id": "mobilenetv3_small",
+      "provider": "torchvision",
+      "model": "mobilenet_v3_small",
+      "weight_id": "MobileNet_V3_Small_Weights.IMAGENET1K_V1",
+      "original_weights": [
+        {
+          "path": "torch/checkpoints/mobilenet_v3_small-047dcff4.pth",
+          "bytes": 10306551,
+          "sha256": "047dcff4addef86ea5bc2eff13c9614dc11f47ab1160d0a71a25e7db994f4e1f"
+        }
+      ],
+      "adapted_weights": {
+        "path": "init-1110ea2b4e9a20945568594e419950950295d434baa6cd3af7afac1889327258.safetensors",
+        "bytes": 6163900,
+        "sha256": "4111aef52a2028b7433435c64ee718991d8fac15624c65db1b2ee44181e9a4b6"
+      },
+      "preprocessing": {
+        "image_size": 224,
+        "resize_size": 256,
+        "crop_pct": 0.875,
+        "mean": [
+          0.485,
+          0.456,
+          0.406
+        ],
+        "std": [
+          0.229,
+          0.224,
+          0.225
+        ],
+        "interpolation": "bilinear"
+      }
+    },
+    {
+      "id": "efficientnet_b0",
+      "provider": "torchvision",
+      "model": "efficientnet_b0",
+      "weight_id": "EfficientNet_B0_Weights.IMAGENET1K_V1",
+      "original_weights": [
+        {
+          "path": "torch/checkpoints/efficientnet_b0_rwightman-7f5810bc.pth",
+          "bytes": 21444401,
+          "sha256": "7f5810bc96def8f7552d5b7e68d53c4786f81167d28291b21c0d90e1fca14934"
+        }
+      ],
+      "adapted_weights": {
+        "path": "init-d33b22667d49a02a6742c7cf76ce368d798f0ea8f2944f09e44fa5c03cc35a87.safetensors",
+        "bytes": 16259156,
+        "sha256": "6736012fd185a9346591289f6e212e87a6005401849e7923ec50a3dcbac57aa8"
+      },
+      "preprocessing": {
+        "image_size": 224,
+        "resize_size": 256,
+        "crop_pct": 0.875,
+        "mean": [
+          0.485,
+          0.456,
+          0.406
+        ],
+        "std": [
+          0.229,
+          0.224,
+          0.225
+        ],
+        "interpolation": "bicubic"
+      }
+    },
+    {
+      "id": "convnext_tiny",
+      "provider": "torchvision",
+      "model": "convnext_tiny",
+      "weight_id": "ConvNeXt_Tiny_Weights.IMAGENET1K_V1",
+      "original_weights": [
+        {
+          "path": "torch/checkpoints/convnext_tiny-983f1562.pth",
+          "bytes": 114419221,
+          "sha256": "983f1562536e84ff750a1576fb08e54de751dbf2e17c0d8a4a13704341fdcd3d"
+        }
+      ],
+      "adapted_weights": {
+        "path": "init-64ef436dd5404775b89e530f344a5ad1323c3644405d20863bcfb71db1433126.safetensors",
+        "bytes": 111312916,
+        "sha256": "1678448d70b8c910a45429e597893016f64e02c60aae2c1c3438b2e5edf887b8"
+      },
+      "preprocessing": {
+        "image_size": 224,
+        "resize_size": 236,
+        "crop_pct": 0.9491525423728814,
+        "mean": [
+          0.485,
+          0.456,
+          0.406
+        ],
+        "std": [
+          0.229,
+          0.224,
+          0.225
+        ],
+        "interpolation": "bilinear"
+      }
+    },
+    {
+      "id": "vit_tiny",
+      "provider": "timm",
+      "model": "vit_tiny_patch16_224.augreg_in21k_ft_in1k",
+      "weight_id": "timm/vit_tiny_patch16_224.augreg_in21k_ft_in1k",
+      "original_weights": [
+        {
+          "path": "models--timm--vit_tiny_patch16_224.augreg_in21k_ft_in1k/snapshots/7d3afdd0cf93ad84d986eb2d6bcc5812ebd0b106/model.safetensors",
+          "bytes": 22883348,
+          "sha256": "fecf81b492bd13ee7a5297cb74d1d417aac8bf7e1b7d96aed89c4691984587ed"
+        }
+      ],
+      "adapted_weights": {
+        "path": "init-1353af071762dce8078ab9949405ab2a4f4ff3eefe0216957caac87539d50c65.safetensors",
+        "bytes": 22115196,
+        "sha256": "1c16227058f0f7e911ab4a2db0e4797d81e8bbd9bb24a2a08bc7bdb3de85b097"
+      },
+      "preprocessing": {
+        "image_size": 224,
+        "mean": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "std": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "interpolation": "bicubic",
+        "crop_pct": 0.9,
+        "resize_size": 248
+      }
+    },
+    {
+      "id": "deit_tiny",
+      "provider": "timm",
+      "model": "deit_tiny_patch16_224.fb_in1k",
+      "weight_id": "timm/deit_tiny_patch16_224.fb_in1k",
+      "original_weights": [
+        {
+          "path": "models--timm--deit_tiny_patch16_224.fb_in1k/snapshots/80e968688553f219e4a86f940ed945a23709c16f/model.safetensors",
+          "bytes": 22883348,
+          "sha256": "21d4764d94f6c3ffdb6da3581115a0a1ee2d505537d96883b540e54766407c9e"
+        }
+      ],
+      "adapted_weights": {
+        "path": "init-e2969354466148cc170ce6558e5d15ec74efc3443f4bf394c0f50268fe35e6b9.safetensors",
+        "bytes": 22115196,
+        "sha256": "b5fdd7fd311b351d4860077ca0e656e0fbffd699f2745438c2691c1bc325cbe8"
+      },
+      "preprocessing": {
+        "image_size": 224,
+        "mean": [
+          0.485,
+          0.456,
+          0.406
+        ],
+        "std": [
+          0.229,
+          0.224,
+          0.225
+        ],
+        "interpolation": "bicubic",
+        "crop_pct": 0.9,
+        "resize_size": 248
+      }
+    },
+    {
+      "id": "swin_tiny",
+      "provider": "torchvision",
+      "model": "swin_t",
+      "weight_id": "Swin_T_Weights.IMAGENET1K_V1",
+      "original_weights": [
+        {
+          "path": "torch/checkpoints/swin_t-704ceda3.pth",
+          "bytes": 113445839,
+          "sha256": "704ceda373461b0a224fcdddd75cd2a5e9f8064512ed47adbddef7f343fd147b"
+        }
+      ],
+      "adapted_weights": {
+        "path": "init-0dbcd34ab7b47ea3067d027f9f3c18e560b853cea13d24b2ff3dfcbc7a8ef67a.safetensors",
+        "bytes": 110340916,
+        "sha256": "34d2a895ad51d53029ca845bb4e71415d84c357dfc6c5757052234e25a6ea50f"
+      },
+      "preprocessing": {
+        "image_size": 224,
+        "resize_size": 232,
+        "crop_pct": 0.9655172413793104,
+        "mean": [
+          0.485,
+          0.456,
+          0.406
+        ],
+        "std": [
+          0.229,
+          0.224,
+          0.225
+        ],
+        "interpolation": "bicubic"
+      }
+    }
+  ],
+  "unique_weight_bytes": 882141128,
+  "num_classes": 5,
+  "seed": 42,
+  "note": "?????????????????????????????"
+}

@@ -1,0 +1,40 @@
+{
+  "samples": 16,
+  "macro_f1": 0.9629629629629629,
+  "micro_f1": 0.96,
+  "map": 1.0,
+  "ap_defined_classes": 3,
+  "per_class_ap": {
+    "red": 1.0,
+    "green": 1.0,
+    "blue": 1.0
+  },
+  "per_class_auc": {
+    "red": 1.0,
+    "green": 1.0,
+    "blue": 1.0
+  },
+  "threshold": 0.5,
+  "per_class": {
+    "red": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 8
+    },
+    "green": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 8
+    },
+    "blue": {
+      "precision": 0.8,
+      "recall": 1.0,
+      "f1": 0.8888888888888888,
+      "support": 8
+    }
+  },
+  "split": "test",
+  "dataset_fingerprint": "fcd5219f296081f9345e30143979c9bff242b608631958a87ae5bce0b5a05a87"
+}

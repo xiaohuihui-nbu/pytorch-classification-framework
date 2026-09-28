@@ -1,0 +1,8 @@
+{
+  "model": "timm/vit_tiny_patch16_224.augreg_in21k_ft_in1k",
+  "run_dir": "E:\\xhh\\projects\\pytorch-classification-framework\\runs\\flower_vit_tiny-smoke\\20260928-135400-7f5d2ba7",
+  "training_log": "E:\\xhh\\projects\\pytorch-classification-framework\\logs\\flower_vit_tiny-smoke\\20260928-135355-smoke-c4367ef7.log",
+  "validation_samples": 551,
+  "predicted_samples": 1,
+  "scope": "Installed cls.exe key=value interface; two real training batches; full val and one image prediction; not convergence"
+}
