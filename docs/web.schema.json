@@ -1,0 +1,211 @@
+{
+  "$defs": {
+    "Appearance": {
+      "additionalProperties": false,
+      "properties": {
+        "theme": {
+          "default": "cyber",
+          "enum": [
+            "cyber",
+            "forest",
+            "ocean",
+            "violet",
+            "amber"
+          ],
+          "title": "Theme",
+          "type": "string"
+        },
+        "mode": {
+          "default": "dark",
+          "enum": [
+            "light",
+            "dark",
+            "system"
+          ],
+          "title": "Mode",
+          "type": "string"
+        }
+      },
+      "title": "Appearance",
+      "type": "object"
+    },
+    "Concurrency": {
+      "additionalProperties": false,
+      "properties": {
+        "train": {
+          "default": 0,
+          "description": "0 表示不限制训练任务数量",
+          "maximum": 8,
+          "minimum": 0,
+          "title": "Train",
+          "type": "integer"
+        },
+        "predict": {
+          "default": 1,
+          "maximum": 8,
+          "minimum": 1,
+          "title": "Predict",
+          "type": "integer"
+        },
+        "auxiliary": {
+          "default": 1,
+          "maximum": 4,
+          "minimum": 1,
+          "title": "Auxiliary",
+          "type": "integer"
+        }
+      },
+      "title": "Concurrency",
+      "type": "object"
+    },
+    "Inference": {
+      "additionalProperties": false,
+      "properties": {
+        "resident": {
+          "default": true,
+          "title": "Resident",
+          "type": "boolean"
+        },
+        "cpu_threads": {
+          "default": 2,
+          "maximum": 32,
+          "minimum": 1,
+          "title": "Cpu Threads",
+          "type": "integer"
+        },
+        "batch_size": {
+          "default": 8,
+          "maximum": 64,
+          "minimum": 1,
+          "title": "Batch Size",
+          "type": "integer"
+        },
+        "cache_models": {
+          "default": 1,
+          "maximum": 4,
+          "minimum": 1,
+          "title": "Cache Models",
+          "type": "integer"
+        },
+        "cache_mb": {
+          "default": 256,
+          "maximum": 2048,
+          "minimum": 16,
+          "title": "Cache Mb",
+          "type": "integer"
+        },
+        "idle_seconds": {
+          "default": 300,
+          "maximum": 3600,
+          "minimum": 30,
+          "title": "Idle Seconds",
+          "type": "integer"
+        }
+      },
+      "title": "Inference",
+      "type": "object"
+    },
+    "Resources": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "max_memory_percent": {
+          "default": 90,
+          "maximum": 99,
+          "minimum": 20,
+          "title": "Max Memory Percent",
+          "type": "integer"
+        },
+        "min_available_gb": {
+          "default": 2.0,
+          "maximum": 1024,
+          "minimum": 0,
+          "title": "Min Available Gb",
+          "type": "number"
+        },
+        "launch_reserve_gb": {
+          "default": 1.0,
+          "maximum": 1024,
+          "minimum": 0,
+          "title": "Launch Reserve Gb",
+          "type": "number"
+        },
+        "min_gpu_free_gb": {
+          "default": 2.0,
+          "maximum": 1024,
+          "minimum": 0,
+          "title": "Min Gpu Free Gb",
+          "type": "number"
+        },
+        "max_jobs_per_gpu": {
+          "default": 0,
+          "description": "0 表示仅按显存判断，不限制任务数量",
+          "maximum": 8,
+          "minimum": 0,
+          "title": "Max Jobs Per Gpu",
+          "type": "integer"
+        }
+      },
+      "title": "Resources",
+      "type": "object"
+    },
+    "TrainingDevice": {
+      "additionalProperties": false,
+      "properties": {
+        "device": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "cpu",
+            "gpu"
+          ],
+          "title": "Device",
+          "type": "string"
+        },
+        "gpu_indices": {
+          "items": {
+            "maximum": 127,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "maxItems": 128,
+          "title": "Gpu Indices",
+          "type": "array"
+        }
+      },
+      "title": "TrainingDevice",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "training": {
+      "$ref": "#/$defs/TrainingDevice"
+    },
+    "concurrency": {
+      "$ref": "#/$defs/Concurrency"
+    },
+    "inference": {
+      "$ref": "#/$defs/Inference"
+    },
+    "appearance": {
+      "$ref": "#/$defs/Appearance"
+    },
+    "resources": {
+      "$ref": "#/$defs/Resources"
+    },
+    "refresh_interval_seconds": {
+      "default": 3,
+      "maximum": 30,
+      "minimum": 1,
+      "title": "Refresh Interval Seconds",
+      "type": "integer"
+    }
+  },
+  "title": "WebSettings",
+  "type": "object"
+}

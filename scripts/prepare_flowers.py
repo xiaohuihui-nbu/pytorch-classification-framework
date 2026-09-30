@@ -20,6 +20,11 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[1]
 URL = "https://storage.googleapis.com/download.tensorflow.org/example_images/flower_photos.tgz"
 CLASSES = ["daisy", "dandelion", "roses", "sunflowers", "tulips"]
+# 已确认且由用户指定排除的跨类别重复；路径与内容摘要必须同时匹配。
+KNOWN_LABEL_CONFLICTS = {
+    "roses/15922772266_1167a06620.jpg": "6784c09ff4eeec0e0ac148cdc74682f99c424ac89d85321d95161e20da9204e9",
+    "tulips/15922772266_1167a06620.jpg": "6784c09ff4eeec0e0ac148cdc74682f99c424ac89d85321d95161e20da9204e9",
+}
 
 
 def sha256(path):
@@ -87,6 +92,12 @@ def split_dataset(source, output, *, seed=42, train_ratio=0.7, val_ratio=0.15, p
         if not path.resolve().is_relative_to(source):
             raise ValueError(f"图片路径越过 source：{path}")
         relative = path.relative_to(source).as_posix()
+        if relative in KNOWN_LABEL_CONFLICTS and sha256(path) == KNOWN_LABEL_CONFLICTS[relative]:
+            excluded.append({
+                "source_path": relative, "reason": "known_label_conflict",
+                "sha256": KNOWN_LABEL_CONFLICTS[relative],
+            })
+            continue
         try:
             with Image.open(path) as opened:
                 image = ImageOps.exif_transpose(opened).convert("RGB")

@@ -1,0 +1,41 @@
+# 复用宿主机现有独立 .venv；其中必须已安装 web/PyTorch 依赖。
+# CLS_WORKSPACE 必须保持服务器项目原绝对路径。
+services:
+  studio:
+    image: ${CLS_IMAGE:-classification-studio:server-env}
+    build:
+      dockerfile: Dockerfile.server
+    command:
+      - ${CLS_WORKSPACE:?请设置服务器项目绝对路径 CLS_WORKSPACE}/.venv/bin/python
+      - /opt/cls/scripts/serve_web.py
+      - --container
+      - --host
+      - ${CLS_ALLOWED_HOST:-127.0.0.1}
+      - --workspace
+      - ${CLS_WORKSPACE}
+      - --frontend-dir
+      - /opt/cls/web/dist
+    environment:
+      VIRTUAL_ENV: ${CLS_WORKSPACE}/.venv
+      PYTHONPATH: ${CLS_WORKSPACE}/src
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    volumes:
+      - type: bind
+        source: ${CLS_ENV_ROOT:-${CLS_DATA_ROOT:?请设置服务器项目绝对路径 CLS_DATA_ROOT}}/.venv
+        target: ${CLS_WORKSPACE}/.venv
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${CLS_ENV_ROOT:-${CLS_DATA_ROOT}}/src
+        target: ${CLS_WORKSPACE}/src
+        read_only: true
+        bind:
+          create_host_path: false
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

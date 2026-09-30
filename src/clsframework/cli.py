@@ -133,16 +133,16 @@ def smoke(config: ConfigOption, overrides: Overrides = None):
 
 @app.command()
 def test(
-    bundle: Annotated[Path, typer.Option(exists=True)],
+    model: Annotated[Path, typer.Option("--model", "--bundle", exists=True)],
     config: Annotated[Path | None, typer.Option("--config", "-c", exists=True, dir_okay=False)] = None,
     split: str = "test",
     output: Path | None = None,
     allow_plugins: bool = False,
     overrides: Overrides = None,
 ):
-    """Evaluate the locked split independently using a saved inference bundle."""
+    """Evaluate the locked split independently using a saved .pt model."""
     show(
-        Classifier(bundle, allow_plugins=allow_plugins).val(
+        Classifier(model, allow_plugins=allow_plugins).val(
             config=config, split=split, output=output, overrides=overrides
         )
     )
@@ -150,7 +150,7 @@ def test(
 
 @app.command()
 def val(
-    bundle: Annotated[Path, typer.Option(exists=True)],
+    model: Annotated[Path, typer.Option("--model", "--bundle", exists=True)],
     config: Annotated[Path | None, typer.Option("--config", "-c", exists=True, dir_okay=False)] = None,
     split: str = "val",
     output: Path | None = None,
@@ -158,12 +158,12 @@ def val(
     overrides: Overrides = None,
 ):
     """Evaluate the validation split; config defaults to the run's saved snapshot."""
-    test(bundle, config, split, output, allow_plugins, overrides)
+    test(model, config, split, output, allow_plugins, overrides)
 
 
 @app.command()
 def predict(
-    bundle: Annotated[Path, typer.Option(exists=True)],
+    model: Annotated[Path, typer.Option("--model", "--bundle", exists=True)],
     inputs: Annotated[Path, typer.Option("--input", exists=True)],
     output: Annotated[Path | None, typer.Option()] = None,
     batch_size: int = 16,
@@ -174,8 +174,8 @@ def predict(
     topk: Annotated[int | None, typer.Option(min=1, max=100)] = None,
     max_images: Annotated[int | None, typer.Option(min=1, max=1000)] = None,
 ):
-    """Predict images on CPU using bundle preprocessing and labels."""
-    model = Classifier(bundle, allow_plugins=allow_plugins)
+    """Predict images on CPU using model preprocessing and labels."""
+    model = Classifier(model, allow_plugins=allow_plugins)
     results = model.predict(
         inputs,
         output=output,
@@ -209,13 +209,13 @@ def report(
 
 @app.command("export")
 def export_model(
-    bundle: Annotated[Path, typer.Option(exists=True)],
+    model: Annotated[Path, typer.Option("--model", "--bundle", exists=True)],
     output: Annotated[Path, typer.Option()],
     allow_plugins: bool = False,
     format: str = "onnx",
 ):
     """Export ONNX and check numerical parity; requires the export extra."""
-    show(Classifier(bundle, allow_plugins=allow_plugins).export(output=output, format=format))
+    show(Classifier(model, allow_plugins=allow_plugins).export(output=output, format=format))
 
 
 def normalize_arguments(arguments: list[str]) -> list[str]:
@@ -231,7 +231,7 @@ def normalize_arguments(arguments: list[str]) -> list[str]:
     option_names = {"output": "--output", "allow_plugins": "--allow-plugins"}
     if mode in config_modes:
         option_names.update(config="--config", cfg="--config")
-    option_names["model"] = "--config" if mode in {"train", "smoke", "prepare", "doctor"} else "--bundle"
+    option_names["model"] = "--config" if mode in {"train", "smoke", "prepare", "doctor"} else "--model"
     if mode == "report":
         option_names["model"] = "--run-dir"
     if mode == "train":
@@ -267,6 +267,7 @@ def normalize_arguments(arguments: list[str]) -> list[str]:
             flag = arg.split("=", 1)[0]
             canonical_flag = {
                 "-c": "--config",
+                "--bundle": "--model",
                 "--no-allow-plugins": "--allow-plugins",
                 "--no-fresh": "--fresh",
                 "--no-save": "--save",

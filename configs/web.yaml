@@ -1,0 +1,26 @@
+# Web 全局设置；页面保存后立即生效。降低并发上限不终止活动任务。
+training:
+  device: cpu
+  gpu_indices: []  # 空列表自动分配单卡；多个编号表示同一任务使用多卡 DDP。
+concurrency:
+  train: 0  # 不按任务数量限流；仍检查内存及 GPU 显存。
+  predict: 3
+  auxiliary: 3
+inference:
+  resident: true
+  cpu_threads: 2
+  batch_size: 8
+  cache_models: 1
+  cache_mb: 256
+  idle_seconds: 300
+appearance:
+  theme: cyber
+  mode: dark
+resources:
+  enabled: true
+  max_memory_percent: 90
+  min_available_gb: 2.0
+  launch_reserve_gb: 1.0
+  min_gpu_free_gb: 2.0
+  max_jobs_per_gpu: 0  # 不限制同一卡任务数。
+refresh_interval_seconds: 3

@@ -1,0 +1,23 @@
+# 白名单构建上下文，避免发送数据、权重、虚拟环境及运行记录。
+**
+!Dockerfile
+!Dockerfile.server
+!pyproject.toml
+!uv.lock
+!src/
+!src/**
+!scripts/
+!scripts/serve_web.py
+!scripts/validate_gpu.py
+!web/
+!web/package.json
+!web/package-lock.json
+!web/index.html
+!web/tsconfig.json
+!web/vite.config.ts
+!web/src/
+!web/src/**
+!web/public/
+!web/public/**
+**/__pycache__/
+**/*.pyc

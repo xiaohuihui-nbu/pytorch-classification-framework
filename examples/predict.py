@@ -13,7 +13,7 @@ def main():
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="通过 Classifier Python API 分类推理")
-    parser.add_argument("--model", type=Path, required=True, help="训练 run 或 bundle 目录")
+    parser.add_argument("--model", type=Path, required=True, help="训练 .pt 模型或 run 目录")
     parser.add_argument("--source", type=Path, required=True, help="本地图片或目录")
     parser.add_argument("--output", type=Path, help="可选 JSONL 保存路径，不覆盖已有文件")
     parser.add_argument("--batch", type=int, default=16)

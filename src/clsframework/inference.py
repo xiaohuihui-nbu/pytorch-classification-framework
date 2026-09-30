@@ -1,6 +1,7 @@
 import csv
 import json
 from pathlib import Path
+from time import perf_counter
 
 import numpy as np
 import torch
@@ -14,22 +15,82 @@ from .registry import load_plugins
 from .utils import append_json, file_hash, read_json, write_json
 
 
+def model_source(path):
+    """Select a self-contained checkpoint or a legacy bundle from a saved run."""
+    path = Path(path)
+    if path.is_file() and path.suffix.lower() in {".pt", ".ckpt"}:
+        return path
+    if path.is_dir():
+        # Old .pt checkpoints rely on their bundle metadata. New runs have no bundle.
+        for candidate in (path / "bundle", path):
+            if (candidate / "bundle_manifest.json").is_file():
+                return candidate
+        if (path / "checkpoints/best.pt").is_file():
+            return path / "checkpoints/best.pt"
+    raise ValueError(f"Model must be a framework .pt checkpoint or saved run directory: {path}")
+
+
+def model_directory(source):
+    source = Path(source)
+    if source.is_file() and source.parent.name == "checkpoints":
+        return source.parent.parent
+    return source.parent
+
+
+def load_model(path, allow_plugins=False):
+    source = model_source(path)
+    if source.is_dir():
+        return load_bundle(source, allow_plugins)
+    status_path = source.parent.parent / "status.json" if source.parent.name == "checkpoints" else None
+    if source.name == "best.pt" and status_path is not None and status_path.is_file():
+        checksum = read_json(status_path).get("best_checkpoint_sha256")
+        if checksum is not None and file_hash(source) != checksum:
+            raise ValueError(f"Model integrity check failed: {source}")
+    checkpoint = torch.load(source, map_location="cpu", weights_only=True, mmap=True)
+    metadata = checkpoint.get("cls_inference")
+    if not isinstance(metadata, dict) or metadata.get("schema_version") != 1:
+        raise ValueError(
+            "E_MODEL_METADATA: checkpoint lacks supported inference metadata; use the original run"
+        )
+    spec = metadata["model_spec"]
+    model = inference_architecture(spec, allow_plugins)
+    state = {
+        key.removeprefix("model."): value
+        for key, value in checkpoint["state_dict"].items()
+        if key.startswith("model.")
+    }
+    model.load_state_dict(state, strict=True)
+    model.eval()
+    return (model, spec, metadata["classes"], metadata["preprocessing"], metadata["threshold"], metadata)
+
+
+def inference_architecture(spec, allow_plugins):
+    if spec["plugins"]:
+        if not allow_plugins:
+            raise ValueError("This model requires installed Python plugins; pass --allow-plugins explicitly")
+        load_plugins(spec["plugins"])
+    return create_architecture(**{k: spec[k] for k in ("provider", "name", "channels", "outputs")})
+
+
 def load_bundle(path, allow_plugins=False):
+    """Read legacy inference bundles; new training writes self-contained .pt files."""
     path = Path(path)
     manifest = read_json(path / "bundle_manifest.json")
-    required = {"model.safetensors", "model_spec.json", "classes.json", "preprocess.json", "thresholds.json"}
+    version = manifest.get("schema_version")
+    required = {"model_spec.json", "classes.json", "preprocess.json", "thresholds.json"}
+    if version != 1:
+        raise ValueError(f"Unsupported bundle schema_version: {version}")
+    weights_path = "model.safetensors"
+    required.add(weights_path)
     if not required.issubset(manifest["checksums"]):
         raise ValueError("Incomplete bundle checksums")
     for name, checksum in manifest["checksums"].items():
-        if Path(name).name != name or file_hash(path / name) != checksum:
+        if Path(name).name != name or not (path / name).is_file() or file_hash(path / name) != checksum:
             raise ValueError(f"Bundle integrity check failed: {name}")
     spec = read_json(path / "model_spec.json")
-    if spec["plugins"]:
-        if not allow_plugins:
-            raise ValueError("This bundle requires installed Python plugins; pass --allow-plugins explicitly")
-        load_plugins(spec["plugins"])
-    model = create_architecture(**{k: spec[k] for k in ("provider", "name", "channels", "outputs")})
-    model.load_state_dict(load_file(str(path / "model.safetensors")), strict=True)
+    model = inference_architecture(spec, allow_plugins)
+    state = load_file(str(path / weights_path))
+    model.load_state_dict(state, strict=True)
     model.eval()
     return (
         model,
@@ -64,8 +125,16 @@ def decoded(probabilities, task, classes, threshold):
     }
 
 
-def predict(bundle, inputs, output, allow_plugins=False, batch_size=16):
-    model, spec, classes, preprocess, threshold, _ = load_bundle(bundle, allow_plugins)
+def predict(source, inputs, output, allow_plugins=False, batch_size=16, *, model_data=None, timings=None):
+    if isinstance(batch_size, bool) or not isinstance(batch_size, int) or batch_size < 1:
+        raise ValueError("batch_size must be a positive integer")
+    timings = timings if timings is not None else {}
+    started = perf_counter()
+    model, spec, classes, preprocess, threshold, _ = (
+        load_model(source, allow_plugins) if model_data is None else model_data
+    )
+    timings["model_load_seconds"] = perf_counter() - started
+    timings.update(preprocess_seconds=0.0, forward_seconds=0.0, write_seconds=0.0)
     inputs, output = Path(inputs), Path(output)
     if output.exists():
         raise FileExistsError(f"Prediction output already exists: {output}")
@@ -88,17 +157,23 @@ def predict(bundle, inputs, output, allow_plugins=False, batch_size=16):
             for start in range(0, len(files), batch_size):
                 paths = files[start : start + batch_size]
                 tensors = []
+                started = perf_counter()
                 for path in paths:
                     with Image.open(path) as image:
                         tensors.append(
                             transform(ImageOps.exif_transpose(image).convert(preprocess["color_mode"]))
                         )
-                logits = model(torch.stack(tensors))
+                images = torch.stack(tensors)
+                timings["preprocess_seconds"] += perf_counter() - started
+                started = perf_counter()
+                logits = model(images)
                 if isinstance(logits, dict):
                     logits = logits["logits"]
                 if not torch.isfinite(logits).all():
                     raise FloatingPointError("Nonfinite prediction logits")
                 probs = logits.softmax(1) if spec["task"] == "multiclass" else logits.sigmoid()
+                timings["forward_seconds"] += perf_counter() - started
+                started = perf_counter()
                 for path, probability in zip(paths, probs.tolist(), strict=True):
                     stream.write(
                         json.dumps(
@@ -108,6 +183,7 @@ def predict(bundle, inputs, output, allow_plugins=False, batch_size=16):
                         )
                         + "\n"
                     )
+                timings["write_seconds"] += perf_counter() - started
         temporary.replace(output)
     except BaseException:
         temporary.unlink(missing_ok=True)
@@ -130,21 +206,21 @@ def save_report(directory, report, classes, plots=True):
         evaluation_report(directory, report, classes)
 
 
-def test_bundle(bundle, cfg, split="test", output=None, allow_plugins=False):
+def evaluate_model(source, cfg, split="test", output=None, allow_plugins=False):
     if split not in {"train", "val", "test"}:
         raise ValueError("split must be train, val or test")
-    model, spec, classes, preprocess, threshold, manifest = load_bundle(bundle, allow_plugins)
+    model, spec, classes, preprocess, threshold, manifest = load_model(source, allow_plugins)
     if cfg.task.type != spec["task"]:
-        raise ValueError("Dataset task differs from bundle task")
+        raise ValueError("Dataset task differs from model task")
     data = prepare_data(cfg)
     if data.classes != classes or data.fingerprint != manifest["dataset_fingerprint"]:
-        raise ValueError("E_DATA_MISMATCH: class mapping/data fingerprint differs from training bundle")
+        raise ValueError("E_DATA_MISMATCH: class mapping/data fingerprint differs from training model")
     cfg.loader.pin_memory = False
     cfg.loader.persistent_workers = cfg.loader.num_workers > 0
     batches = loader(cfg, data, split, preprocess)
     if len(batches.dataset) == 0:
         raise ValueError(f"No {split} split available; test results cannot be invented")
-    directory = Path(output) if output else Path(bundle).parent / "evaluation" / split
+    directory = Path(output) if output else model_directory(model_source(source)) / "evaluation" / split
     directory.mkdir(parents=True, exist_ok=False)
     targets, probabilities = [], []
     with torch.inference_mode():
@@ -170,11 +246,11 @@ def test_bundle(bundle, cfg, split="test", output=None, allow_plugins=False):
     return report
 
 
-def export_onnx(bundle, output, allow_plugins=False):
+def export_onnx(source, output, allow_plugins=False):
     import onnx
     import onnxruntime as ort
 
-    model, spec, classes, preprocess, threshold, _ = load_bundle(bundle, allow_plugins)
+    model, spec, classes, preprocess, threshold, _ = load_model(source, allow_plugins)
     output = Path(output)
     if output.exists():
         raise FileExistsError(output)

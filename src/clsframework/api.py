@@ -59,7 +59,7 @@ def normalize_overrides(overrides=None, options=None):
 
 
 class Classifier:
-    """Create from a YAML/Config for training, or a bundle/run directory for inference."""
+    """Create from a YAML/Config for training, or a .pt/run directory for inference."""
 
     def __init__(self, model: str | Path | Config, *, allow_plugins: bool = False, log_config=None):
         configure_threads()
@@ -69,6 +69,9 @@ class Classifier:
         self.last_report: Path | None = None
         self._log_settings = Logging.model_validate(log_config) if log_config is not None else None
         self.run_dir: Path | None = None
+        self.checkpoint: Path | None = None
+        self._model_source: Path | None = None
+        # Retained for callers loading legacy bundle directories.
         self.bundle: Path | None = None
         self._config: Config | None = None
         self._trained_config: Config | None = None
@@ -80,17 +83,20 @@ class Classifier:
             if path.is_file() and path.suffix.lower() in {".yaml", ".yml"}:
                 self._config_path = path
                 self._config = load_config(path)
-            elif path.is_dir():
-                self.bundle = path / "bundle" if (path / "bundle").is_dir() else path
-                if not (self.bundle / "bundle_manifest.json").is_file():
-                    raise ValueError(f"Not a classification bundle or run directory: {path}")
-                self.run_dir = self.bundle.parent
-                snapshot = self.run_dir / "config.resolved.yaml"
+            elif path.is_dir() or (path.is_file() and path.suffix.lower() in {".pt", ".ckpt"}):
+                from .inference import model_directory, model_source
+
+                self._model_source = model_source(path)
+                self.checkpoint = self._model_source if self._model_source.is_file() else None
+                self.bundle = self._model_source if self._model_source.is_dir() else None
+                directory = model_directory(self._model_source)
+                self.run_dir = directory if (directory / "config.resolved.yaml").is_file() else None
+                snapshot = directory / "config.resolved.yaml"
                 if snapshot.is_file():
                     self._config_path = snapshot
                     self._config = load_config(snapshot)
             else:
-                raise ValueError("model must be an existing YAML file or a saved bundle/run directory")
+                raise ValueError("model must be an existing YAML, framework .pt or saved run directory")
 
     def _configuration(self, config=None, overrides=None, options=None):
         updates = normalize_overrides(overrides, options)
@@ -99,14 +105,14 @@ class Classifier:
                 return resolve_config(config.model_dump(mode="json"), Path.cwd(), updates)
             return load_config(Path(config), updates)
         if self._config is None:
-            raise ValueError("This standalone bundle has no dataset config; pass config='path/to/model.yaml'")
+            raise ValueError("This standalone model has no dataset config; pass config='path/to/model.yaml'")
         base = self._config_path.parent if self._config_path else Path.cwd()
         return resolve_config(self._config.model_dump(mode="json"), base, updates)
 
-    def _require_bundle(self):
-        if self.bundle is None:
-            raise ValueError("Train first, or create Classifier from a saved bundle/run directory")
-        return self.bundle
+    def _require_model(self):
+        if self._model_source is None:
+            raise ValueError("Train first, or create Classifier from a saved .pt/run directory")
+        return self._model_source
 
     @contextmanager
     def _operation(self, mode, cfg=None):
@@ -148,6 +154,8 @@ class Classifier:
             raise TypeError("fresh must be a boolean")
         if sum((resume is not None, finetune_from is not None, fresh)) > 1:
             raise ValueError("Choose one of resume, finetune_from or fresh")
+        if fresh or resume is not None or finetune_from is not None:
+            cfg.checkpoint.auto_resume = False
         if fresh:
             cfg.checkpoint.resume_from = None
             cfg.checkpoint.finetune_from = None
@@ -180,6 +188,7 @@ class Classifier:
         cfg.scheduler.warmup_epochs = 0
         cfg.checkpoint.resume_from = None
         cfg.checkpoint.finetune_from = None
+        cfg.checkpoint.auto_resume = False
         return self._train(cfg, smoke=True)
 
     def _train(self, cfg, **kwargs):
@@ -193,7 +202,9 @@ class Classifier:
 
             append_json(directory / "operation_logs.jsonl", {"operation": mode, "log": str(self.last_log)})
         self.run_dir = directory
-        self.bundle = directory / "bundle" if (directory / "bundle/bundle_manifest.json").is_file() else None
+        self.checkpoint = directory / "checkpoints/best.pt"
+        self._model_source = self.checkpoint if self.checkpoint.is_file() else None
+        self.bundle = None
         self._trained_config = cfg.model_copy(deep=True)
         self.last_output = directory
         report_path = directory / "visuals/report.html"
@@ -211,14 +222,14 @@ class Classifier:
 
     def val(self, *, config=None, split="val", output=None, overrides=None, **kwargs):
         """Evaluate a saved model on a locked dataset split (val by default)."""
-        bundle = self._require_bundle()
+        source = self._require_model()
         cfg = self._configuration(config if config is not None else self._trained_config, overrides, kwargs)
         from .engine import resolve_runtime
-        from .inference import test_bundle
+        from .inference import evaluate_model
 
         with self._operation("test" if split == "test" else "val", cfg):
             resolve_runtime(cfg)
-            report = test_bundle(bundle, cfg, split, output, self.allow_plugins)
+            report = evaluate_model(source, cfg, split, output, self.allow_plugins)
             self.last_output = Path(report["output_dir"])
             self.last_report = self.last_output / "report.html" if cfg.visualization.enabled else None
             metrics = {key: value for key, value in report.items() if isinstance(value, (int, float))}
@@ -242,7 +253,7 @@ class Classifier:
         max_images=None,
     ) -> list[dict]:
         """Return predictions for a local image/directory; optionally save JSONL."""
-        bundle = self._require_bundle()
+        model_path = self._require_model()
         if isinstance(batch, bool) or not isinstance(batch, int) or batch < 1:
             raise ValueError("batch must be a positive integer")
         source = Path(source)
@@ -290,7 +301,7 @@ class Classifier:
             if not source.exists():
                 raise FileNotFoundError(source)
             target = Path(output) if output is not None else Path(temporary) / "predictions.jsonl"
-            predict(bundle, source, target, self.allow_plugins, batch)
+            predict(model_path, source, target, self.allow_plugins, batch)
             results = [
                 PredictionResult(json.loads(line)) for line in target.read_text(encoding="utf-8").splitlines()
             ]
@@ -311,14 +322,14 @@ class Classifier:
         """Export ONNX with numerical verification; other formats are rejected."""
         if format != "onnx":
             raise ValueError("Only format='onnx' is supported")
-        bundle = self._require_bundle()
+        source = self._require_model()
         import torch
 
-        from .inference import export_onnx
+        from .inference import export_onnx, model_directory
 
         torch.set_num_threads(2)
-        target = Path(output) if output is not None else bundle.parent / "exports/model.onnx"
+        target = Path(output) if output is not None else model_directory(source) / "exports/model.onnx"
         with self._operation("export"):
-            report = export_onnx(bundle, target, self.allow_plugins)
+            report = export_onnx(source, target, self.allow_plugins)
             logging.getLogger(__name__).info("ONNX 导出及数值检查完成：%s", target)
             return report

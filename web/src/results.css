@@ -1,0 +1,339 @@
+.results-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  min-width: 0;
+}
+.results-workspace > * {
+  min-width: 0;
+}
+.results-workspace .inference-summary > span {
+  color: var(--accent);
+}
+.result-navigation {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.result-navigation label {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.result-navigation .button {
+  flex-shrink: 0;
+}
+.prediction.prediction-comparison {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.prediction-source,
+.prediction-output {
+  min-width: 0;
+  padding: 24px;
+}
+.prediction-source {
+  border-right: 1px solid var(--border);
+  background: var(--soft);
+}
+.prediction-comparison h3 {
+  font-size: 15px;
+  margin: 0 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.prediction-comparison h3 > span {
+  font-size: 11px;
+  color: var(--accent);
+  padding: 6px 8px;
+  background: var(--surface);
+  border-radius: 6px;
+}
+.source-frame {
+  aspect-ratio: 4 / 3;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.source-frame a {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.source-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.source-unavailable {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+.prediction .source-name {
+  font-size: 14px;
+  margin: 18px 0 12px;
+  overflow-wrap: anywhere;
+}
+.path-caption {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+.source-path {
+  display: block;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.prediction-winner {
+  padding: 22px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: linear-gradient(125deg, #329acd17, #8563e120);
+  margin: 0 0 24px;
+}
+.prediction-winner > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.prediction .prediction-winner strong {
+  font-size: 27px;
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+.prediction-winner > b {
+  font-size: 22px;
+  color: var(--accent);
+}
+.prediction-output .probability {
+  font-size: 13px;
+  margin: 18px 0;
+  gap: 14px;
+}
+.prediction-output .probability > span {
+  width: 95px;
+}
+.prediction-output .probability > b {
+  font-size: 12px;
+  width: 48px;
+}
+.prediction-pending {
+  color: var(--muted);
+  padding: 36px 0;
+  font-size: 14px;
+}
+@media (max-width: 800px) {
+  .result-navigation {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+  }
+  .prediction.prediction-comparison {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .prediction-source {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .prediction-source,
+  .prediction-output {
+    padding: 18px;
+  }
+}
+.result-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.result-toolbar h2,
+.result-toolbar h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.result-view-toolbar {
+  margin: 0;
+}
+.result-toolbar .result-view-switch {
+  margin-left: auto;
+}
+.result-view-switch {
+  display: flex;
+  padding: 4px;
+  border-radius: 9px;
+  background: var(--soft);
+  border: 1px solid var(--border);
+  gap: 4px;
+}
+.result-view-switch button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 9px 13px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.result-view-switch button.selected {
+  background: linear-gradient(125deg, #329acd28, #8563e128);
+  color: var(--accent);
+}
+.result-view-switch button:focus-visible {
+  outline: 2px solid var(--accent);
+}
+.result-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.result-overview-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(130deg, var(--surface), var(--soft));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.result-overview-card .section-title {
+  margin: 0;
+}
+.result-overview-card h3 {
+  margin: 0;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.result-overview-card p,
+.result-overview-card code,
+.result-overview-card small {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.result-overview-card .button {
+  margin-top: auto;
+}
+.result-catalog .task-search {
+  flex: 1;
+}
+.result-catalog select {
+  width: auto;
+}
+.predictions > .result-toolbar {
+  margin-top: 24px;
+}
+.predictions-cards .prediction-items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.predictions-cards .prediction-comparison {
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+}
+.predictions-cards .prediction-source {
+  border-right: 0;
+  border-bottom: 1px solid var(--border);
+}
+.predictions-cards .prediction-source,
+.predictions-cards .prediction-output {
+  padding: 18px;
+}
+.predictions-cards .prediction-winner {
+  padding: 16px;
+}
+.prediction-table {
+  min-width: 750px;
+  table-layout: fixed;
+}
+.prediction-table th:first-child {
+  width: 120px;
+}
+.prediction-table th:nth-child(2) {
+  width: 35%;
+}
+.prediction-table .source-frame {
+  width: 95px;
+}
+.prediction-table strong {
+  overflow-wrap: anywhere;
+}
+.prediction-table summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+.prediction-table details p {
+  font-size: 12px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1150px) {
+  .result-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 800px) {
+  .result-card-grid,
+  .predictions-cards .prediction-items {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .result-toolbar .result-view-switch {
+    margin-left: 0;
+  }
+  .result-view-switch {
+    max-width: 100%;
+  }
+  .result-view-switch button {
+    padding: 8px;
+    gap: 5px;
+    font-size: 11px;
+  }
+}
+.experiment-comparison {
+  margin-bottom: 24px;
+  min-width: 0;
+}
+.comparison-picker {
+  max-height: 180px;
+  overflow: auto;
+  display: grid;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.comparison-picker label {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.comparison-chart {
+  width: 100%;
+  height: 340px;
+}
+.experiment-comparison td,
+.experiment-comparison th {
+  max-width: 330px;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}

@@ -124,6 +124,7 @@ class Evaluation(Strict):
 
 
 class Checkpoint(Strict):
+    auto_resume: bool = False
     resume_from: Path | None = None
     resume_policy: Literal["strict"] = "strict"
     finetune_from: Path | Literal["last"] | None = None
@@ -139,6 +140,7 @@ class Logging(Strict):
 
 class Runtime(Strict):
     offline: bool = False
+    cache_image_validation: bool = False
     cache_dir: Path = Field(default_factory=lambda: Path("cache"))
     weights_dir: Path | None = Field(default_factory=lambda: Path("weights"))
     plugins: list[str] = Field(default_factory=list)
@@ -171,6 +173,10 @@ class Config(Strict):
 
     @model_validator(mode="after")
     def compatible(self):
+        if self.runtime.cache_image_validation and (
+            self.dataset.provider not in {"imagefolder", "manifest"} or self.dataset.integrity != "strict"
+        ):
+            raise ValueError("cache_image_validation requires ImageFolder/manifest with strict integrity")
         if self.checkpoint.resume_from is not None and self.checkpoint.finetune_from is not None:
             raise ValueError("Choose strict resume or weight-only finetuning, not both")
         soft = self.augmentation.mixup_alpha > 0 or self.augmentation.cutmix_alpha > 0

@@ -8,18 +8,19 @@ import sys
 import uuid
 from datetime import datetime
 from pathlib import Path
+from time import perf_counter
 
 import lightning as L
 import numpy as np
 import torch
 import yaml
+from filelock import FileLock, Timeout
 from lightning.pytorch.callbacks import Callback, ModelCheckpoint
-from safetensors.torch import save_file
 from timm.data import Mixup
 from torch.nn import functional as F
 from torchmetrics.functional.classification import multiclass_f1_score
 
-from .continuation import apply_finetune
+from .continuation import apply_auto_resume, apply_finetune, requested_training_config
 from .data import loader, prepare_data, save_prepared
 from .losses import build_loss
 from .metrics import evaluate_arrays
@@ -247,12 +248,24 @@ class ClassificationTask(L.LightningModule):
         return {"optimizer": optimizer, "lr_scheduler": {"scheduler": schedule, "interval": "step"}}
 
     def on_save_checkpoint(self, checkpoint):
-        checkpoint["cls_contract"] = self.signature
+        checkpoint["cls_contract"] = digest(self.signature)
         checkpoint["cls_rng"] = capture_rng()
         checkpoint["cls_run_dir"] = str(self.directory)
+        checkpoint["cls_inference"] = {
+            "schema_version": 1,
+            "model_spec": {
+                **self.signature["architecture"],
+                "task": self.cfg.task.type,
+                "plugins": self.cfg.runtime.plugins,
+            },
+            "classes": self.classes,
+            "preprocessing": self.signature["preprocessing"],
+            "threshold": self.cfg.evaluation.threshold,
+            "dataset_fingerprint": self.signature["fingerprint"],
+        }
 
     def on_load_checkpoint(self, checkpoint):
-        if checkpoint["cls_contract"] != self.signature:
+        if checkpoint["cls_contract"] != digest(self.signature):
             raise ValueError("E_RESUME_MISMATCH: data/config/code/dependency contract changed")
         restore_rng(checkpoint["cls_rng"])
 
@@ -261,8 +274,16 @@ class Events(Callback):
     def __init__(self, directory, stop_after_epoch=None):
         self.directory, self.stop_after_epoch = Path(directory), stop_after_epoch
 
+    def on_train_epoch_start(self, trainer, module):
+        self.started = perf_counter()
+        self.samples = 0
+
+    def on_train_batch_end(self, trainer, module, outputs, batch, batch_idx):
+        self.samples += len(batch["image"])
+
     def on_train_epoch_end(self, trainer, module):
         if trainer.is_global_zero:
+            seconds = perf_counter() - self.started
             logging.getLogger(__name__).info(
                 "Epoch %d/%d 完成：step=%d, lr=%.8g, %s=%.6g",
                 trainer.current_epoch + 1,
@@ -279,6 +300,8 @@ class Events(Callback):
                     "time": utc_now(),
                     "epoch": trainer.current_epoch,
                     "global_step": trainer.global_step,
+                    "epoch_seconds": seconds,
+                    "train_images_per_second": self.samples * trainer.world_size / seconds,
                     "lr": trainer.optimizers[0].param_groups[0]["lr"],
                     "train_loss": float(trainer.callback_metrics["train/loss"])
                     if "train/loss" in trainer.callback_metrics
@@ -296,11 +319,13 @@ class EpochCheckpoint(ModelCheckpoint):
     Our resume contract requires a full checkpoint at every epoch boundary.
     """
 
+    FILE_EXTENSION = ".pt"
+
     def on_train_epoch_end(self, trainer, pl_module):
         super().on_train_epoch_end(trainer, pl_module)
-        destination = Path(self.dirpath) / "last.ckpt"
+        destination = Path(self.dirpath) / "last.pt"
         self.last_model_path = str(destination)
-        temporary = destination.with_suffix(".ckpt.tmp")
+        temporary = destination.with_suffix(".pt.tmp")
         # Strict resume needs optimizer/scheduler/callback state as well as model weights.
         trainer.save_checkpoint(str(temporary), weights_only=False)
         if trainer.is_global_zero:
@@ -308,35 +333,27 @@ class EpochCheckpoint(ModelCheckpoint):
         trainer.strategy.barrier()
 
 
-def save_bundle(directory, model, architecture, preprocessing, cfg, data, provenance, checkpoint):
-    bundle = Path(directory) / "bundle"
-    bundle.mkdir(exist_ok=True)
-    save_file(
-        {k: v.detach().cpu().contiguous() for k, v in model.state_dict().items()},
-        str(bundle / "model.safetensors"),
-    )
-    write_json(
-        bundle / "model_spec.json", {**architecture, "task": cfg.task.type, "plugins": cfg.runtime.plugins}
-    )
-    write_json(bundle / "classes.json", data.classes)
-    write_json(bundle / "preprocess.json", preprocessing)
-    write_json(bundle / "thresholds.json", {"threshold": cfg.evaluation.threshold})
-    write_json(
-        bundle / "bundle_manifest.json",
-        {
-            "schema_version": 1,
-            "dataset_fingerprint": data.fingerprint,
-            "checkpoint": str(checkpoint),
-            "provenance": provenance,
-            "environment": environment(),
-            "checksums": {p.name: file_hash(p) for p in bundle.iterdir() if p.name != "bundle_manifest.json"},
-        },
-    )
-    return bundle
-
-
 def train(cfg, original_config=None, smoke=False, stop_after_epoch=None):
+    root = cfg.experiment.output_root / cfg.experiment.name
+    root.mkdir(parents=True, exist_ok=True)
+    lock = FileLock(str(root / ".train.lock")) if primary_process() else None
+    if lock is not None:
+        try:
+            lock.acquire(timeout=0)
+        except Timeout as exc:
+            raise ValueError("E_TRAIN_ACTIVE: 同一实验已有训练进程，请先停止它或使用不同实验名") from exc
+    try:
+        return _train(cfg, original_config, smoke, stop_after_epoch)
+    finally:
+        if lock is not None:
+            lock.release()
+
+
+def _train(cfg, original_config=None, smoke=False, stop_after_epoch=None):
     log = logging.getLogger(__name__)
+    requested = requested_training_config(cfg)
+    if not smoke:
+        apply_auto_resume(cfg)
     log.info(
         "准备训练：model=%s/%s, epochs=%d, batch=%d, resume=%s",
         cfg.model.provider,
@@ -361,7 +378,7 @@ def train(cfg, original_config=None, smoke=False, stop_after_epoch=None):
     if resume:
         # Only framework-created, trusted local checkpoints are supported for resume.
         previous = torch.load(resume, map_location="cpu", weights_only=False)
-        if previous.get("cls_contract") != signature:
+        if previous.get("cls_contract") != digest(signature):
             raise ValueError("E_RESUME_MISMATCH: data/config/code/dependency contract changed")
         directory = Path(previous["cls_run_dir"])
         if not directory.is_dir():
@@ -377,6 +394,7 @@ def train(cfg, original_config=None, smoke=False, stop_after_epoch=None):
         directory.mkdir(parents=True, exist_ok=bool(resume) or "LOCAL_RANK" in os.environ)
         if not resume:
             save_prepared(data, directory)
+            write_json(directory / "config.requested.json", requested)
             (directory / "config.resolved.yaml").write_text(
                 yaml.safe_dump(cfg.model_dump(mode="json"), allow_unicode=True, sort_keys=False),
                 encoding="utf-8",
@@ -392,13 +410,14 @@ def train(cfg, original_config=None, smoke=False, stop_after_epoch=None):
     task = ClassificationTask(model, criterion, cfg, data.classes, signature, directory)
     checkpoint = EpochCheckpoint(
         dirpath=directory / "checkpoints",
-        filename="epoch-{epoch:03d}",
+        filename="best",
         monitor=cfg.evaluation.monitor,
         mode=cfg.evaluation.mode,
         save_last=False,
         save_top_k=1,
         save_on_train_epoch_end=True,
         auto_insert_metric_name=False,
+        enable_version_counter=False,
     )
     callbacks = [Events(directory, stop_after_epoch), checkpoint]
     logger = False
@@ -439,17 +458,11 @@ def train(cfg, original_config=None, smoke=False, stop_after_epoch=None):
             best = checkpoint.best_model_path
             if not best:
                 raise RuntimeError("Training produced no best checkpoint")
-            state = torch.load(best, map_location="cpu", weights_only=False)["state_dict"]
-            model.load_state_dict(
-                {k.removeprefix("model."): v for k, v in state.items() if k.startswith("model.")}
-            )
-            save_bundle(directory, model, architecture, preprocessing, cfg, data, provenance, best)
             finished = trainer.current_epoch >= cfg.trainer.max_epochs
             log.info(
-                "训练状态=%s；best=%s；bundle=%s",
+                "训练状态=%s；best=%s",
                 "SUCCEEDED" if finished else "PAUSED",
                 best,
-                directory / "bundle",
             )
             write_json(
                 directory / "status.json",
@@ -460,6 +473,7 @@ def train(cfg, original_config=None, smoke=False, stop_after_epoch=None):
                     "global_step": trainer.global_step,
                     "smoke": smoke,
                     "best_checkpoint": best,
+                    "best_checkpoint_sha256": file_hash(best),
                 },
             )
             if cfg.visualization.enabled:

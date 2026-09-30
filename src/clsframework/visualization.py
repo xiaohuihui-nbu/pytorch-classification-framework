@@ -155,8 +155,10 @@ def training_report(run_dir, output=None):
         ax.grid(alpha=0.2)
     figure.savefig(directory / "results.png", dpi=130)
     latest = metrics[max(metrics)]
-    # Bundle labels preserve the exact class order, including binary positive-class reports.
-    class_file = run / "bundle/classes.json"
+    # Prepared labels preserve the exact class order, including binary positive-class reports.
+    class_file = run / "classes.json"
+    if not class_file.is_file():
+        class_file = run / "bundle/classes.json"  # Legacy runs.
     classes = (
         json.loads(class_file.read_text(encoding="utf-8"))
         if class_file.is_file()

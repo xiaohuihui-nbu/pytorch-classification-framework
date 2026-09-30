@@ -29,15 +29,27 @@ dependencies = [
 [project.optional-dependencies]
 export = ["onnx>=1.17", "onnxruntime>=1.20", "onnxscript>=0.3"]
 tracking = ["tensorboard>=2.18", "mlflow>=2.20"]
+web = [
+    "fastapi>=0.115,<1",
+    "httpx>=0.28,<1",
+    "psutil>=6,<8",
+    "python-multipart>=0.0.20",
+    "uvicorn>=0.34,<1",
+]
 
 [dependency-groups]
+web = ["fastapi>=0.115,<1", "httpx>=0.28,<1", "psutil>=6,<8", "python-multipart>=0.0.20", "uvicorn>=0.34,<1"]
 dev = ["pytest>=8", "ruff>=0.11"]
 
 [project.scripts]
 cls = "clsframework.cli:main"
+cls-web = "clsweb.app:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/clsframework"]
+packages = ["src/clsframework", "src/clsweb"]
+
+[tool.uv]
+default-groups = ["dev", "web"]
 
 [tool.uv.sources]
 torch = { index = "pytorch-cpu" }

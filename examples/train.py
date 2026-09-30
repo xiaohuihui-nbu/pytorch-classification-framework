@@ -35,7 +35,7 @@ def main(argv=None):
             stream.reconfigure(encoding="utf-8")
     configs = model_configs()
     parser = argparse.ArgumentParser(
-        description="正式训练；未指定的参数沿用 YAML 配置",
+        description="正式训练；花卉配置默认自动恢复最近未完成断点；未指定的参数沿用 YAML 配置",
         epilog="示例：--list-models；--model resnet50 --epochs 20 --batch 4；--model vit_tiny --show-config",
     )
     selection = parser.add_mutually_exclusive_group()
@@ -88,7 +88,7 @@ def main(argv=None):
     )
     continuation = parser.add_mutually_exclusive_group()
     continuation.add_argument("--resume", type=Path, help="从受信任的本框架 checkpoint 严格续训")
-    continuation.add_argument("--finetune-from", help="仅继承权重：last 自动选上次，或指定 run 目录/.ckpt")
+    continuation.add_argument("--finetune-from", help="仅继承权重：last 自动选上次，或指定 run 目录/.pt")
     continuation.add_argument("--fresh", action="store_true", help="关闭自动接续，按 YAML 初始权重开始新实验")
     parser.add_argument(
         "--set",
@@ -140,6 +140,8 @@ def main(argv=None):
         import yaml
 
         cfg = load_config(config, normalize_overrides(overrides, options))
+        if args.resume is not None or args.finetune_from is not None or args.fresh:
+            cfg.checkpoint.auto_resume = False
         if args.resume is not None:
             cfg.checkpoint.resume_from = args.resume.resolve()
             cfg.checkpoint.finetune_from = None
@@ -158,7 +160,7 @@ def main(argv=None):
         resume=args.resume, finetune_from=args.finetune_from, fresh=args.fresh, overrides=overrides, **options
     )
     print(f"训练结果：{directory}")
-    print(f"推理 bundle：{model.bundle}")
+    print(f"最佳模型：{model.checkpoint}")
     print(f"日志文件：{model.last_log}")
     print(f"可视化报告：{model.last_report}")
 

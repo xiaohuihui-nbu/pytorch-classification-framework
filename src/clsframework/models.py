@@ -191,7 +191,7 @@ def build_model(cfg, classes):
         model.load_state_dict(state, strict=True)
         provenance.update({"path": str(path), "sha256": file_hash(path)})
         if preprocess["source"] == "model_weights":
-            raise ValueError("Local weights require explicit preprocessing; use a bundle for prediction")
+            raise ValueError("Local weights require explicit preprocessing; use a trained .pt for prediction")
     if preprocess["image_size"] == "auto":
         preprocess["image_size"] = 224
     if not isinstance(preprocess["image_size"], int) or preprocess["image_size"] < 8:

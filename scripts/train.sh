@@ -215,7 +215,7 @@ run_model() {
 }
 
 # 所有模型同时启动：注释整行可跳过模型；单独修改该行的 epochs/batch/lr。
-run_model resnet18 uv run --no-sync examples/train.py --config configs/flower/flower_resnet18.yaml --epochs "$EPOCHS"
+run_model resnet18 uv --no-sync examples/train.py --config configs/flower/flower_resnet18.yaml --epochs "$EPOCHS"
 run_model resnet50 uv run --no-sync examples/train.py --config configs/flower/flower_resnet50.yaml --epochs "$EPOCHS"
 run_model mobilenetv3_small uv run --no-sync examples/train.py --config configs/flower/flower_mobilenetv3_small.yaml --epochs "$EPOCHS"
 run_model efficientnet_b0 uv run --no-sync examples/train.py --config configs/flower/flower_efficientnet_b0.yaml --epochs "$EPOCHS"

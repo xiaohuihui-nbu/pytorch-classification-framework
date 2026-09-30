@@ -1,6 +1,7 @@
 import csv
 import hashlib
 import itertools
+import uuid
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -9,6 +10,7 @@ import numpy as np
 import torch
 from filelock import FileLock
 from PIL import Image, ImageOps
+from PIL import __version__ as pillow_version
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Dataset
 from torchvision import datasets, transforms
@@ -48,6 +50,17 @@ def class_names(path, inferred):
 
 def _custom_rows(cfg):
     spec = cfg.dataset
+    cache_path = cfg.runtime.cache_dir / "image_validation" / (digest(str(spec.root.resolve())) + ".json")
+    cached, verified = {}, {}
+    if cfg.runtime.cache_image_validation and cache_path.is_file():
+        try:
+            cache = read_json(cache_path)
+            if cache.get("pillow") == pillow_version and cache.get("version") == 1:
+                cached = cache.get("verified", {})
+                if not isinstance(cached, dict):
+                    cached = {}
+        except (OSError, ValueError, AttributeError):
+            pass  # A damaged optional cache is rebuilt from the actual image bytes.
     rows = []
     if spec.provider == "imagefolder":
         if cfg.task.type == "multilabel":
@@ -107,11 +120,13 @@ def _custom_rows(cfg):
             raise ValueError(f"Duplicate sample_id/path: {sid}")
         seen_ids.add(sid)
         seen_paths.add(path)
-        with Image.open(path) as image:
-            image.load()
-            if min(image.size) < 1:
-                raise ValueError(f"Empty image: {path}")
         checksum = file_hash(path) if spec.integrity == "strict" else str(path.stat().st_size)
+        if not cfg.runtime.cache_image_validation or cached.get(checksum) is not True:
+            with Image.open(path) as image:
+                image.load()
+                if min(image.size) < 1:
+                    raise ValueError(f"Empty image: {path}")
+        verified[checksum] = True
         if spec.integrity == "strict" and checksum in seen_hashes and seen_hashes[checksum] != split:
             raise ValueError(f"E_DATA_LEAKAGE: identical image across splits: {sid}")
         seen_hashes[checksum] = split
@@ -137,6 +152,14 @@ def _custom_rows(cfg):
                 "sha256": checksum,
             }
         )
+    if cfg.runtime.cache_image_validation:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = cache_path.with_suffix(f".{uuid.uuid4().hex}.tmp")
+        try:
+            write_json(temporary, {"version": 1, "pillow": pillow_version, "verified": verified})
+            temporary.replace(cache_path)
+        finally:
+            temporary.unlink(missing_ok=True)
     return normalized, names, {}
 
 

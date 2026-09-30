@@ -1,0 +1,47 @@
+name: classification-studio
+services:
+  studio:
+    image: ${CLS_IMAGE:-classification-studio:cpu}
+    build:
+      context: .
+    user: "${CLS_UID:-1000}:${CLS_GID:-1000}"
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    shm_size: "2gb"
+    working_dir: ${CLS_WORKSPACE:-/workspace}
+    command:
+      - python
+      - /opt/cls/scripts/serve_web.py
+      - --container
+      - --host
+      - ${CLS_ALLOWED_HOST:-127.0.0.1}
+      - --workspace
+      - ${CLS_WORKSPACE:-/workspace}
+      - --frontend-dir
+      - /opt/cls/web/dist
+    environment:
+      USER: classification
+      LOGNAME: classification
+      CLS_WEB_PORT: ${CLS_WEB_PORT:-5173}
+      CLS_WEB_ORIGINS: ${CLS_WEB_ORIGINS:-}
+      XDG_CACHE_HOME: ${CLS_WORKSPACE:-/workspace}/cache
+      MPLCONFIGDIR: ${CLS_WORKSPACE:-/workspace}/cache/matplotlib
+    ports:
+      - "${CLS_BIND_IP:-127.0.0.1}:${CLS_PORT:-8000}:8000"
+    volumes:
+      - ${CLS_DATA_ROOT:-.}/configs:${CLS_WORKSPACE:-/workspace}/configs
+      - ${CLS_DATA_ROOT:-.}/data:${CLS_WORKSPACE:-/workspace}/data:ro
+      - ${CLS_DATA_ROOT:-.}/weights:${CLS_WORKSPACE:-/workspace}/weights
+      - ${CLS_DATA_ROOT:-.}/cache:${CLS_WORKSPACE:-/workspace}/cache
+      - ${CLS_DATA_ROOT:-.}/runs:${CLS_WORKSPACE:-/workspace}/runs
+      - ${CLS_DATA_ROOT:-.}/logs:${CLS_WORKSPACE:-/workspace}/logs
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

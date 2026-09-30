@@ -2,6 +2,8 @@
 
 使用 YAML 选择网络和训练参数，通过统一的 CLI 与 Python API 完成 **训练、验证、测试、推理、ONNX 导出和可视化报告**。
 
+也可以使用独立的 **Web 实验室**，在浏览器中选择模型、配置训练、查看后台日志与图表、上传图片推理。首次使用见 [13. Web 实验室](#13-web-实验室)。
+
 接口形式参考 [Ultralytics CLI](https://docs.ultralytics.com/usage/cli/) 与 [Python API](https://docs.ultralytics.com/usage/python/)。本项目使用 `Classifier` 对象和 `cls` 命令，专注图像分类，无需安装 ultralytics。
 
 当前版本为 **0.1.0**。基于 PyTorch、torchvision、timm、Lightning、Hydra、Pydantic 和 TorchMetrics；当前锁定依赖为 Windows CPU 验收环境。
@@ -29,6 +31,7 @@
 - [10. 后台批量训练](#10-后台批量训练)
 - [11. 常见问题](#11-常见问题)
 - [12. 项目结构与验收](#12-项目结构与验收)
+- [13. Web 实验室](#13-web-实验室)
 
 ## 1. 功能概览
 
@@ -40,8 +43,9 @@
 | 数据 | ImageFolder、CSV/JSONL manifest、torchvision 数据集适配器；类别映射和数据泄漏检查 |
 | 训练 | 全参数微调、冻结主干、数据增强、Mixup/CutMix、进度条和 checkpoint |
 | 评估 | Top-1/Top-5、Macro-F1、逐类指标、混淆矩阵；多标签 mAP/Micro-F1 |
-| 推理与导出 | 本地图片或目录批量推理、JSONL、safetensors bundle、ONNX 数值验证 |
+| 推理与导出 | 本地图片或目录批量推理、JSONL、直接加载训练 .pt、ONNX 数值验证 |
 | 可视化与记录 | 训练曲线、预测概率图片、离线 HTML、CSV、根目录 logs 日志 |
+| Web 实验室 | 前后端分离、模型与数据选择、后台任务、停止训练、历史图表、上传图片推理 |
 
 模型可以加载，不代表所有模型和数据组合均完成收敛或精度评估。当前验证范围见[项目结构与验收](#12-项目结构与验收)。
 
@@ -127,7 +131,7 @@ uv run scripts/prepare_flowers.py
 
 1. 复用本地压缩包，缺失时从上述 HTTPS 地址下载，显示字节进度。
 2. 解压至临时目录，拒绝越界路径、符号链接等不安全条目。
-3. 逐张解码，按 EXIF 方向转换为 RGB 计算像素摘要；损坏图片记录后排除，同类别的相同像素图片只保留一张，跨类别重复则报错供人工检查。
+3. 按路径和 SHA256 排除已确认的 `roses/15922772266_1167a06620.jpg`、`tulips/15922772266_1167a06620.jpg` 两张标签冲突图片，记录为 `known_label_conflict`。其余图片逐张解码，按 EXIF 方向转换为 RGB 计算像素摘要；损坏图片记录后排除，同类别的相同像素图片只保留一张，其他跨类别重复仍报错供人工检查。
 4. 使用固定随机种子 `42`，在每个类别内部按约 **70% / 15% / 15%** 分为 train / val / test；整数取整使比例存在小幅差异。
 5. 复制原始图片到划分目录，生成 `samples.csv`、`classes.json` 和 `split_report.json`，保留压缩包中的 `LICENSE.txt`。
 6. 输出实际数量与报告路径。校验和复制阶段均显示进度条，全部成功后才发布最终数据目录。
@@ -206,7 +210,7 @@ uv run cls prepare model=configs/flower/flower_resnet18.yaml
 uv run cls train model=configs/flower/flower_resnet18.yaml epochs=10 batch=4
 ```
 
-验证集用于每轮评估和选择最佳权重，测试集通过独立的 `cls test model=RUN_DIR` 做最终评估。处理脚本已通过 6 项小型数据回归，覆盖去重、可复现划分、框架读取、离线压缩包、不安全路径拒绝及下载缓存/中断清理；下载分支使用模拟响应验证，本轮没有重新下载完整数据集，不把数据处理成功当作模型性能验收。
+验证集用于每轮评估和选择最佳权重，测试集通过独立的 `cls test model=RUN_DIR` 做最终评估。处理脚本已通过 7 项小型数据回归，覆盖去重、已知标签冲突的路径与摘要校验、可复现划分、框架读取、离线压缩包、不安全路径拒绝及下载缓存/中断清理。服务器使用现有完整压缩包实测生成 train=2564、val=551、test=551，共 3666 张图片；排除指定的两张标签冲突图片和两张同类重复图片。下载分支使用模拟响应验证，不把数据处理成功当作模型性能验收。
 
 ## 4. 模型与配置
 
@@ -261,7 +265,7 @@ PowerShell 自带的 `cls` 是清屏别名，请使用 `uv run ... cls`、`.venv
 | `doctor` | 检查配置与环境，不执行数据完整性检查或下载 |
 | `prepare` | 检查数据并准备所选模型的初始化权重 |
 | `train` | 正式训练，每轮在验证集上评估 |
-| `val` / `test` | 使用保存的 bundle，独立评估验证集 / 测试集 |
+| `val` / `test` | 使用保存的最佳 .pt，独立评估验证集 / 测试集 |
 | `predict` | 对本地图片或目录推理 |
 | `report` | 从已有训练记录生成图片和 HTML，无需重新训练 |
 | `export` | 导出 ONNX，并检查与 PyTorch 输出的数值一致性 |
@@ -333,29 +337,43 @@ if __name__ == "__main__":
 ```python
 from clsframework import Classifier
 
-model = Classifier("RUN_DIR/bundle")
+model = Classifier("RUN_DIR/checkpoints/best.pt")  # 也可以直接传入 RUN_DIR
 results = model("path/to/image.jpg")  # 等价于 model.predict(...)
 ```
 
-训练返回 run 目录 `Path`；评估返回指标字典；推理返回兼容 dict/JSON 的结果对象列表。多标签结果使用 `labels` 数组，二分类/多标签按 bundle 中的阈值做决策。
+训练返回 run 目录 `Path`；`model.checkpoint` 返回最佳模型路径；评估返回指标字典；推理返回兼容 dict/JSON 的结果对象列表。多标签结果使用 `labels` 数组，二分类/多标签按 .pt 中的阈值做决策。
 
-Python 的 `predict()` 默认不保存，`save=True` 才保存图片和 HTML；CLI 与 `examples/predict.py` 默认保存。复制出的独立 bundle 若需评估，应显式提供 `model.val(config="configs/flower/flower_resnet18.yaml")`，且数据指纹须与训练时一致。
+Python 的 `predict()` 默认不保存，`save=True` 才保存图片和 HTML；CLI 与 `examples/predict.py` 默认保存。单独复制 `best.pt` 即可推理，无需额外权重包；独立 .pt 若需评估，应显式提供 `model.val(config="configs/flower/flower_resnet18.yaml")`，且数据指纹须与训练时一致。
 
 ## 7. 预训练与继续训练
 
 预训练原始权重和适配后初始化缓存统一放在根目录 `weights/`。首次缺失时自动下载，失败直接报错；不会静默改用随机初始化。`offline=true` 只使用已准备的本地资源，缺缓存时报错。模型离线开关不控制 uv 的依赖安装联网行为。
 
-花卉公共配置默认 `checkpoint.finetune_from: last`，因此日常再次训练会自动继承同一实验最近一次 `last.ckpt` 的参数。
+花卉公共配置默认 `checkpoint.auto_resume: true` 和 `checkpoint.finetune_from: last`。再次执行相同训练命令时，在同一 `experiment.output_root / experiment.name` 下按修改时间选择最近的 `last.pt`：若尚未完成原训练预算，核对本次配置后自动使用原运行的配置快照严格续训；若已经完成，则继承权重新建微调运行。没有断点时按 YAML 初始权重开始。
+
+```powershell
+# 中断后再次执行同一条命令即可，无需手动填写 --resume
+uv run examples/train.py --config configs/flower/flower_resnet18.yaml
+```
+
+自动恢复保留模型、优化器、学习率调度器、轮次和随机状态。断点仅在完整轮次结束后保存，中途中断的一轮需要重跑；没有断点的空运行不会被选中。同一实验同时只允许一个训练进程，避免两个进程恢复并写入同一断点。
+
+自动恢复使用 `config.requested.json` 核对启动配置，再加载 `config.resolved.yaml` 中的实际配置。修改训练参数、数据或运行契约时会明确报错，不会静默改为微调。旧运行若缺少 `config.requested.json`，自动恢复也会报错；请用原版本及显式 `--resume` 恢复，或选择 `--finetune-from last` 仅继承权重。此次核心源码变更会影响旧 checkpoint 的严格续训契约。
+
+显式 `--resume`、`--finetune-from`、`--fresh` 优先于自动恢复。其他配置可通过 `checkpoint.auto_resume: true` 开启；设为 `false` 可关闭自动恢复。
+
+新训练的 checkpoints 目录只保存 `last.pt` 和 `best.pt`，格式仍是 PyTorch 完整训练状态；最新断点每轮更新，最佳断点仅在验证指标改善时覆盖。兼容读取历史 `.ckpt` 文件，但旧源码的严格恢复限制仍然适用。
 
 | 方式 | 继承内容 | epoch 与优化器 | 适用场景 |
 |---|---|---|---|
-| 默认训练 / `finetune_from=last` | 上次模型参数，包含已训练分类头；无历史时按配置初始化 | 新建 run，计数重置，可改轮数和学习率 | 接着上次权重继续微调 |
+| 默认训练，最近断点未完成 | 完整训练状态 | 延续原 run 与总训练预算 | 自动断点恢复 |
+| 默认训练，最近断点已完成 / 显式 `finetune_from=last` | 上次模型参数，包含已训练分类头；无历史时按配置初始化 | 新建 run，计数重置，可改轮数和学习率 | 接着上次权重继续微调 |
 | `fresh=true` | YAML 指定的初始权重，花卉配方为发布方预训练权重 | 新建 run，重新开始 | 独立实验，不接续历史结果 |
-| `resume=.../last.ckpt` | 模型、优化器、调度器、计数及随机状态 | 延续原 run 与总训练预算 | 同环境下严格断点恢复 |
+| `resume=.../last.pt` | 模型、优化器、调度器、计数及随机状态 | 延续原 run 与总训练预算 | 同环境下严格断点恢复 |
 
 ```powershell
 # 同一实验已有历史时，本次再微调 5 轮
-uv run cls train model=configs/flower/flower_resnet18.yaml epochs=5 lr0=0.0001
+uv run cls train model=configs/flower/flower_resnet18.yaml finetune_from=last epochs=5 lr0=0.0001
 
 # 按配方初始权重开始一个独立实验
 uv run cls train model=configs/flower/flower_resnet18.yaml fresh=true
@@ -364,10 +382,10 @@ uv run cls train model=configs/flower/flower_resnet18.yaml fresh=true
 uv run cls train model=configs/flower/flower_resnet18.yaml finetune_from=RUN_DIR epochs=5
 
 # 严格恢复：使用该运行的配置快照及 checkpoint
-uv run cls train model=RUN_DIR/config.resolved.yaml resume=RUN_DIR/checkpoints/last.ckpt
+uv run cls train model=RUN_DIR/config.resolved.yaml resume=RUN_DIR/checkpoints/last.pt
 ```
 
-严格恢复要求训练配置、数据、依赖和核心源码契约一致；改变训练预算或学习率应使用微调方式。跨核心源码版本的旧 checkpoint 可能无法严格恢复，参数兼容时仍可用于微调，标准 bundle 仍可推理。这三种显式模式互斥。
+严格恢复要求训练配置、数据、依赖和核心源码契约一致；改变训练预算或学习率应使用微调方式。跨核心源码版本的旧 checkpoint 可能无法严格恢复，参数兼容时仍可用于微调，旧 safetensors bundle 保持读取兼容。这三种显式模式互斥。
 
 比较多个模型时使用相同数据划分和训练预算，并通过 `fresh=true` 或独立实验名控制初始化条件，避免无意接续历史结果。
 
@@ -378,16 +396,14 @@ uv run cls train model=RUN_DIR/config.resolved.yaml resume=RUN_DIR/checkpoints/l
 ```text
 runs/flower_resnet18/<run_id>/
 ├── config.resolved.yaml       # 实际运行配置
+├── config.requested.json      # 自动恢复时核对的启动配置
 ├── checkpoints/
-│   ├── last.ckpt              # 最新完整训练状态
-│   └── epoch-*.ckpt           # 选出的最佳 checkpoint
-├── bundle/                   # 最佳权重的推理交付包
-│   ├── model.safetensors
-│   ├── model_spec.json
-│   ├── classes.json
-│   ├── preprocess.json
-│   ├── thresholds.json
-│   └── bundle_manifest.json
+│   ├── last.pt               # 最近完整轮次的模型和续训状态
+│   └── best.pt               # 验证指标最优的模型，改善时覆盖
+├── classes.json              # 类别顺序
+├── contract.json             # 完整续训契约；pt 仅存摘要
+├── provenance.json           # 权重来源
+├── environment.json          # 依赖环境
 ├── visuals/
 │   ├── report.html
 │   ├── results.csv
@@ -401,7 +417,9 @@ runs/flower_resnet18/<run_id>/
 └── status.json               # 运行状态与最佳 checkpoint
 ```
 
-训练曲线展示已记录的 train loss、验证 Top-1 或 mAP、Macro-F1 和学习率。训练报告的逐类指标与混淆矩阵来自**最后记录轮**的验证集；`val`/`test` 才是保存的最佳 bundle 的独立评估。历史缺失的 loss 留空，当前不计算验证 loss。二分类/多标签不生成不适用的多分类混淆矩阵。
+新训练不生成 bundle，也不另存 model.safetensors。`.pt` 保留模型参数、优化器/调度器/轮次/随机状态等续训必要信息，以及模型结构、类别、预处理、阈值等少量推理元数据。完整配置、指标历史、来源、环境和可视化设置保存在训练目录中；`.pt` 只记录续训契约的摘要。
+
+训练曲线展示已记录的 train loss、验证 Top-1 或 mAP、Macro-F1 和学习率。训练报告的逐类指标与混淆矩阵来自**最后记录轮**的验证集；`val`/`test` 才是保存的最佳 .pt 的独立评估。历史缺失的 loss 留空，当前不计算验证 loss。二分类/多标签不生成不适用的多分类混淆矩阵。
 
 预测默认输出 `runs/predict/<时间-ID>/predictions.jsonl`，报告位于同目录下的 `predictions_visuals/report.html`，图片放在 `predictions_visuals/images/`。
 
@@ -468,7 +486,7 @@ Windows PowerShell 中应指定实际安装的 Git Bash；本机路径示例：
 | OpenBLAS 内存分配失败 | 保持 workers=0，降低 batch 或并发模型数；后台脚本已限制 BLAS/OMP/MKL 线程 |
 | 离线运行提示权重不存在 | 先在线对相同模型、类别数和 seed 执行 prepare；离线模式不会自动下载或随机回退 |
 | 只训练 1 轮时报预热参数错误 | 同时设置 `epochs=1 scheduler.warmup_epochs=0`；示例脚本用 `--epochs 1 --warmup-epochs 0` |
-| 直接替换官方模型分类数能否免训练 | 新分类头需要在目标数据上微调；已有训练 bundle 可直接推理 |
+| 直接替换官方模型分类数能否免训练 | 新分类头需要在目标数据上微调；已有训练 .pt 可直接推理 |
 | 再次运行评估或预测报目录已存在 | 指定新的 output；自动生成名称的预测不复用已有目录 |
 | 五分类的 Top-5 一直为 100% | 类别数就是 5，比较模型时关注 Top-1、Macro-F1 和逐类指标 |
 | 旧 checkpoint 严格恢复被拒绝 | 使用匹配的原源码、依赖、配置和数据；若要改变参数则选择仅加载权重微调 |
@@ -478,6 +496,8 @@ Windows PowerShell 中应指定实际安装的 Git Bash；本机路径示例：
 ```text
 configs/flower/      公共配置和各模型配置
 src/clsframework/   CLI、Python API、训练、数据、模型、推理和可视化
+src/clsweb/         独立 FastAPI 服务、任务队列与工作进程
+web/                React + TypeScript 前端、接口与浏览器测试
 examples/           train.py、predict.py
 scripts/            prepare_flowers.py 数据处理、train.sh 后台批量入口
 docs/               Git 常用命令文档与项目规划
@@ -502,3 +522,45 @@ uv build
 当前 `.gitignore` 排除了 `tests/`，仅克隆仓库的副本可能不包含本地验收测试。GPU/AMP/Linux DDP、全模型长训练与精度排名尚未完成全面验收；合成数据测试和短流程检查不代表真实花卉性能。推理目前支持 CPU 上的本地图片/目录，导出仅支持 ONNX；不支持视频、摄像头、URL 输入或任意 Ultralytics 参数。
 
 进一步阅读：[GitHub 上传与拉取常用命令](docs/GIT_GUIDE.md)。[项目规划](docs/PLAN.md)记录设计目标，具体已实现功能以本 README 和当前代码为准。
+
+## 13. Web 实验室
+
+服务器容器化部署见 [Docker 部署说明](docs/DOCKER.md)，服务器方案直接复用现有 Python 环境，支持持久化目录、健康检查和自动重启；另提供独立 CPU 镜像。
+
+### 13.1 安装与启动
+
+需要 Node.js 22.12+。在项目根目录执行，首次安装前端依赖：
+
+```powershell
+uv sync --extra web
+cd web
+npm ci
+cd ..
+uv run --extra web scripts/web.py
+```
+
+自动打开 **http://127.0.0.1:5173**。以后只需运行最后一条命令。`--extra web` 用于安装和保留 Web 所需依赖；这里不能省略。使用 `--no-browser` 可以禁止自动打开浏览器。
+
+前后端仍是独立进程，也可以在两个终端分别运行 `uv run --extra web cls-web` 和 `cd web` 后的 `npm run dev`。API 文档：**http://127.0.0.1:8000/docs**。
+
+### 13.2 使用流程
+
+1. **训练工作台**：选择模型和 ImageFolder 数据集，填写轮数、batch；高级参数可调整学习率、微调方式和离线模式。默认接着上次权重微调，没有历史权重时加载官方预训练权重。
+2. **任务管理与任务结果**：任务管理页集中展示列表和管理操作，点击任务进入独立结果页，查看实际轮次进度、验证准确率和实时日志，随时停止任务。结果页支持刷新、直接访问及浏览器前进/后退。默认训练并发 2、推理并发 1、评估/报告并发 1，在独立“设置”页面调整。同名实验的训练依次执行，可通过高级参数填写不同实验名进行并行比较；支持优先级、运行时限和 GPU 选择。
+3. **实验结果**：查看历史模型、训练曲线和混淆矩阵，生成 HTML 报告，执行验证集或测试集评估。最多选择 4 个实验，对比交互曲线、指标和参数差异，选择保存在 URL 中。兼容已有 CLI 训练目录。
+4. **图片推理**：选择训练好的模型并上传图片，可清空重选。页面统一只推理，任务结束清理临时图片，保留类别、概率和任务记录。结果页左侧临时预览输入原图及路径，右侧显示预测类别与概率；刷新后未保存的预览消失。推理可与训练并行，不运行 epochs。
+5. **设置**：集中管理并发、推理缓存、内存/显存保护、刷新间隔及五种颜色主题，默认采用深色蓝紫科技渐变，支持浅色、深色和跟随系统。配置保存在 `configs/web.yaml`，跨页面生效并在重启后保留。资源不足时新任务排队并显示原因。
+
+任务管理提供表格、卡片和状态看板，支持搜索、筛选、改名、排队任务改参、复制运行、单项与批量删除。删除运行任务会先停止相应进程；权重、报告和日志保留。
+
+任务结果页支持详细、卡片、表格视图，可搜索、按类型筛选及分页。图片预测也可独立切换详细对照、卡片网格或缩略图表格，两处视图选择分别记忆。
+
+底部固定状态栏显示服务连接、运行/排队任务、各类并发上限、整机 CPU 与内存占用及更新时间。
+
+前端采用 React Router、TanStack Query 和按需加载的 ECharts，后端使用 FastAPI、SQLite 与独立工作进程。SSE 推送状态与日志增量，断线自动退回轮询；任务列表支持服务端搜索和分页。当前本机使用无需额外部署 Celery、Redis、MySQL 或 MinIO。
+
+关闭浏览器不会停止训练；停止后端会终止活动工作进程。任务记录位于 `runs/web/`，日志位于根目录 `logs/web/`。默认仅供本机个人使用，不启用登录或公网访问。
+
+安装、数据格式、任务状态、接口、开发测试和能力边界见 [Web 使用与开发说明](docs/WEB.md)。
+
+常驻推理、后台报告、图片验证缓存、分阶段计时及本机 CPU 测量见 [性能优化说明](docs/PERFORMANCE.md)。
